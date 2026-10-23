@@ -1,5 +1,5 @@
 #!name=高德地图去广告·开屏与打车活动
-#!desc=v0.3.0：保留开屏规则，新增打车领券/活动弹窗列表过滤；保留订单、付款、安全和协议提醒。需 Surge iOS 5.9.1+、重写、脚本和已信任的 MITM；实际效果待真机验证。请停用重复模块。
+#!desc=v0.4.0：保留开屏与活动弹窗过滤，新增目的地旁红包和50元通勤浮标的精准素材过滤；蓝色代驾6.6元横幅未处理。需 Surge iOS 5.9.1+、重写、脚本与MITM；效果待真机验证。
 
 # 编写日期：2026-10-23
 # 本地 HAR 的 User-Agent 中观察到 AMap 17.02.0；不表示全版本适用。
@@ -17,10 +17,10 @@
 (?i)^https://m5\.amap\.com/ws/valueadded/alimama/splash_screen\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
 
 [Script]
-# 只处理促销 resource 的已知弹窗列表，不拦截整个打车接口。
+# 保留活动弹窗处理，新增两处已核验的营销素材过滤；蓝色代驾横幅不改。
 # 源码固定到已核对的 GitHub 提交，后续更新不漂移。
 # 异常/未知结构保留原响应；响应超过 256 KiB 由 Surge 跳过脚本透传。
-amap-taxi-promo-popup = type=http-response,pattern=(?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource(?:\?|$),requires-body=true,max-size=262144,timeout=5,script-path=https://raw.githubusercontent.com/niu93/surge-modules/3eb0734a3c528df53c0837145de146ed918a3e89/amap-taxi-popup.js
+amap-taxi-promotions = type=http-response,pattern=(?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource(?:/home)?(?:\?|$),requires-body=true,max-size=262144,timeout=5,script-path=https://raw.githubusercontent.com/niu93/surge-modules/a163104118dfb5caf7fb30e48178b701e1c1de55/amap-taxi-popup.js
 
 [MITM]
 # 追加三个必要主机；m5-zb.amap.com 用于打车促销响应处理。不替换 CA、不关闭服务端证书验证。
