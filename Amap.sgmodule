@@ -1,28 +1,17 @@
-#!name=高德地图去广告·开屏与打车活动
-#!desc=v0.4.0：保留开屏与活动弹窗过滤，新增目的地旁红包和50元通勤浮标的精准素材过滤；蓝色代驾6.6元横幅未处理。需 Surge iOS 5.9.1+、重写、脚本与MITM；效果待真机验证。
+#!name=高德地图去广告·开屏保守版
+#!desc=仅针对已知开屏广告接口返回空 JSON；不处理首页推荐或搜索内容。需 Surge iOS 5.9.1+，开启重写与 MITM，并信任自己的 CA 证书。未经真机验证。
 
-# 编写日期：2026-10-23
-# 本地 HAR 的 User-Agent 中观察到 AMap 17.02.0；不表示全版本适用。
-# 新接口的真实响应是 multipart/form-data：JSON 广告元数据 + JPEG 素材，
-# 其中 creative.media.is_ad="1"，display_time="5"。
-# 本版拒绝该独立接口，不把它强制改成 {} 或 204，不处理整个域名。
-# 客户端如何处理拒绝（跳过、重试、留白或回退）尚待用户真机测试。
-
-[URL Rewrite]
-(?i)^https://amap-aos-info-nogw\.amap\.com/ws/aos/alimama/splash_screen_rt(?:\?|$) _ reject
+# 版本：0.1.0；编写日期：2026-10-23
+# 适用目标：中国版高德地图 iOS；具体 App 版本兼容性待验证。
+# 接口依据：Repcz/Tool 的 Kelee 转换模块（上游标注：可莉）。
+# https://github.com/Repcz/Tool/blob/X/Surge/Module/Kelee/Amap_remove_ads.sgmodule
+# 本文件仅保留开屏接口映射，不包含上游的页面精简或 Body Rewrite。
+# 本地响应不含业务成功字段，是否被特定版本接受需实际验证。
 
 [Map Local]
-# 保留 v0.1 的旧接口规则；在本次 HAR 中未出现，不等于永远不再使用。
-# 旧接口依据：https://github.com/Repcz/Tool/blob/X/Surge/Module/Kelee/Amap_remove_ads.sgmodule
 (?i)^https://m5\.amap\.com/ws/valueadded/alimama/splash_screen\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
 
-[Script]
-# 保留活动弹窗处理，新增两处已核验的营销素材过滤；蓝色代驾横幅不改。
-# 源码固定到已核对的 GitHub 提交，后续更新不漂移。
-# 异常/未知结构保留原响应；响应超过 256 KiB 由 Surge 跳过脚本透传。
-amap-taxi-promotions = type=http-response,pattern=(?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource(?:/home)?(?:\?|$),requires-body=true,max-size=262144,timeout=5,script-path=https://raw.githubusercontent.com/niu93/surge-modules/a163104118dfb5caf7fb30e48178b701e1c1de55/amap-taxi-popup.js
-
 [MITM]
-# 追加三个必要主机；m5-zb.amap.com 用于打车促销响应处理。不替换 CA、不关闭服务端证书验证。
-# MITM 会覆盖这些主机上的其他 HTTPS 请求，并非仅广告路径。
-hostname = %APPEND% m5.amap.com, amap-aos-info-nogw.amap.com, m5-zb.amap.com
+# 追加而非覆盖现有主机名；不包含 CA、不关闭服务端证书验证。
+# 解密按主机名生效，因此该主机的非广告 HTTPS 请求也在解密范围内。
+hostname = %APPEND% m5.amap.com
