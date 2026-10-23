@@ -1,5 +1,5 @@
 #!name=高德地图·第一版重写测试
-#!desc=v0.1.1-test2：保留test1全部规则，新增打车营销皮肤槽局部过滤试验；可能影响同槽其他促销，圈选横幅效果待真机验证。右上企及底栏未实现隐藏。需Surge iOS 5.14+；请勿与旧版重复启用。
+#!desc=v0.1.1-test3：保留test2规则，新增打车页活动专区、售卖券包、推广横幅、会员展示及里程签到兑换区精简；只改页面展示，不改账户权益。需Surge iOS 5.14+；真机效果待验证。企及底栏仍未处理。
 
 # 基线：v0.1.0；原固定文件 Amap.sgmodule 保持不变。
 # 仅保留第一版的旧开屏映射，不恢复v0.2以后的实时开屏拒绝。
@@ -19,6 +19,9 @@ http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource/home(?:
 
 # 仅在已知营销皮肤结构匹配时删除skin槽；未知/混合结构透传。
 http-response-jq (?i)^https://m5-zb\.amap\.com/ws/boss/car/order/content_info(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object)) then if (.data.lubanData | object) then if (.data.lubanData.skin | object) then if (.data.lubanData.skin.dataList | type) == "array" then if ((.data.lubanData.skin.dataList | length) > 0 and all(.data.lubanData.skin.dataList[]; if object then if (.protocol | object) then ((.protocol.skin_list | type) == "array") else false end else false end)) then del(.data.lubanData.skin) else . end else . end else . end else . end else . end) catch $original'
+
+# 用户选择页面全精简：仅过滤五类已确认展示模块，同步移除其布局引用。
+http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource/home(?:\?|$) '. as $original | try (def object: type == "object"; def target: if object then .banner_type as $kind | if $kind == "union" then (.dataList | type) == "array" elif ($kind | type) == "string" then if (["coupon", "ad", "vip", "vip_exchange"] | index($kind)) != null then (.show_info | type) == "array" else false end else false end else false end; if (object and (.data | object)) then if (.data.banner | object) then if (.data.banner.data | object) then if (.data.banner.data.banner | type) == "array" then .data.banner.data.banner as $before | ($before | map(select(target | not))) as $after | ($before | map(select(target) | .banner_type) | unique) as $removed_types | ($after | map(if object then .banner_type else null end)) as $kept_types | ($removed_types | map(. as $kind | select(($kept_types | index($kind)) == null))) as $fully_removed | if ($removed_types | length) > 0 then .data.banner.data.banner = $after | if (.data.banner.data.config | object) then reduce ["first", "second", "third"][] as $key (.; if (.data.banner.data.config[$key] | type) == "array" then .data.banner.data.config[$key] |= map( select(if type == "string" then . as $kind | ($fully_removed | index($kind)) == null else true end) ) else . end) else . end else . end else . end else . end else . end else . end) catch $original'
 
 [MITM]
 # 追加而非覆盖；解密是主机级别，不仅覆盖上述路径。
