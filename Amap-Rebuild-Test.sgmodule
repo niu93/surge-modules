@@ -1,0 +1,22 @@
+#!name=高德地图·第一版重写测试
+#!desc=v0.1.1-test1：以v0.1为基线，使用原生jq处理打车活动弹窗、目的地优惠气泡和5601类营销浮标；不依赖JS，不处理蓝色代驾横幅或底栏。需Surge iOS 5.14+；真机效果未验证，请勿与原版同时启用。
+
+# 基线：v0.1.0；原固定文件 Amap.sgmodule 保持不变。
+# 仅保留第一版的旧开屏映射，不恢复v0.2以后的实时开屏拒绝。
+# 本测试模块不下载或执行任何远程脚本。
+# jq按已核验栏位/类型处理，不固定素材文件名，范围比v0.4精确图片过滤稍宽。
+# 5303栏位的当单立减气泡及5601类图标将不再展示；优惠领取与使用效果待真机确认。
+# 蓝色代驾6.6元横幅未定位，因此未改；探索/长按说话底栏未改。
+
+[Map Local]
+(?i)^https://m5\.amap\.com/ws/valueadded/alimama/splash_screen\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
+
+[Body Rewrite]
+http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object)) then if ((try .data.popup catch null) | object) then (if (.data.popup.popup_list | type) == "array" then .data.popup.popup_list = [] else . end) | (if (.data.popup.dataList | type) == "array" then .data.popup.dataList |= map( if (object and (.protocol | object)) then if ((.protocol.popup_list | type) == "array" and (.protocol.popup_list | length) > 0) then .protocol.popup_list = [] | select((.protocol | keys | map(select(. != "popup_list")) | length) > 0) else . end else . end ) else . end) else . end else . end) catch $original'
+http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object)) then if (.data.bubble | object) then if (.data.bubble["5303"] | type) == "array" then .data.bubble["5303"] |= map( select( if object then if (.award_list | type) == "array" then any(.award_list[]; if object then .award_title == "当单立减" else false end) | not else true end else true end ) ) else . end else . end else . end) catch $original'
+http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource/home(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object)) then if (.data.other | object) then if (.data.other.data | object) then if (.data.other.data.icon | object) then if (.data.other.data.icon.icon_list | type) == "array" then .data.other.data.icon.icon_list |= map( select(if object then (.inner_type | tostring) != "5601" else true end) ) else . end else . end else . end else . end else . end) catch $original'
+
+[MITM]
+# 追加而非覆盖；解密是主机级别，不仅覆盖上述路径。
+# 不修改CA，不关闭服务端证书验证。
+hostname = %APPEND% m5.amap.com, m5-zb.amap.com
