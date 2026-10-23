@@ -1,5 +1,5 @@
 #!name=高德地图·第一版重写测试
-#!desc=v0.1.1-test3：保留test2规则，新增打车页活动专区、售卖券包、推广横幅、会员展示及里程签到兑换区精简；只改页面展示，不改账户权益。需Surge iOS 5.14+；真机效果待验证。企及底栏仍未处理。
+#!desc=v0.1.1-test4：保留test3规则，新增我的页订单至借钱一栏下方已确认卡片精简；保留足迹/语音包/车标和五入口，只改展示不改账号数据。需Surge iOS5.14+；真机效果待验证，企与底栏未处理。
 
 # 基线：v0.1.0；原固定文件 Amap.sgmodule 保持不变。
 # 仅保留第一版的旧开屏映射，不恢复v0.2以后的实时开屏拒绝。
@@ -22,6 +22,9 @@ http-response-jq (?i)^https://m5-zb\.amap\.com/ws/boss/car/order/content_info(?:
 
 # 用户选择页面全精简：仅过滤五类已确认展示模块，同步移除其布局引用。
 http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource/home(?:\?|$) '. as $original | try (def object: type == "object"; def target: if object then .banner_type as $kind | if $kind == "union" then (.dataList | type) == "array" elif ($kind | type) == "string" then if (["coupon", "ad", "vip", "vip_exchange"] | index($kind)) != null then (.show_info | type) == "array" else false end else false end else false end; if (object and (.data | object)) then if (.data.banner | object) then if (.data.banner.data | object) then if (.data.banner.data.banner | type) == "array" then .data.banner.data.banner as $before | ($before | map(select(target | not))) as $after | ($before | map(select(target) | .banner_type) | unique) as $removed_types | ($after | map(if object then .banner_type else null end)) as $kept_types | ($removed_types | map(. as $kind | select(($kept_types | index($kind)) == null))) as $fully_removed | if ($removed_types | length) > 0 then .data.banner.data.banner = $after | if (.data.banner.data.config | object) then reduce ["first", "second", "third"][] as $key (.; if (.data.banner.data.config[$key] | type) == "array" then .data.banner.data.config[$key] |= map( select(if type == "string" then . as $kind | ($fully_removed | index($kind)) == null else true end) ) else . end) else . end else . end else . end else . end else . end else . end) catch $original'
+
+# 我的页：仅处理已核验cardList和入口卡子列表，不封锁共用信息流接口。
+http-response-jq (?i)^https://m5\.amap\.com/ws/shield/dsp/profile/index/nodefaasv3(?:\?|$) '. as $original | try (def object: type == "object"; def remove_card: if object then .dataKey as $key | (["UserCircleCard", "UserCircleCardV3", "MineMemberRecommendTaskCardV2", "PopularActivitiesCardV2", "PopularActivitiesCardV5", "ContentCenterFeedCard"] | index($key)) != null else false end; if (object and (.data | object)) then if (.data.cardList | type) == "array" then .data.cardList |= map( select(remove_card | not) | if object then if (.dataKey == "MineNewBEntranceCardV4" and (.content | object)) then (if (.content.entranceList_2 | type) == "array" then .content.entranceList_2 = [] else . end) | (if (.content.entranceList_1 | type) == "array" then .content.entranceList_1 |= map( if object then if ((.id == 10 or .id == "10") and .title == "待评价" and (.tips | type) == "array") then .tips = [] else . end else . end) else . end) else . end else . end ) else . end else . end) catch $original'
 
 [MITM]
 # 追加而非覆盖；解密是主机级别，不仅覆盖上述路径。
