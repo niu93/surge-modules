@@ -1,0 +1,22 @@
+#!name=高德地图去广告·开屏 HAR 测试版
+#!desc=v0.2.0：根据用户抓包新增实时开屏接口的精确拒绝，并保留旧接口的空 JSON 映射。需 Surge iOS 5.9.1+、重写和已信任的 MITM。不是全广告清理；未做真机效果验证。请勿与旧版重复启用。
+
+# 编写日期：2026-10-23
+# 本地 HAR 的 User-Agent 中观察到 AMap 17.02.0；不表示全版本适用。
+# 新接口的真实响应是 multipart/form-data：JSON 广告元数据 + JPEG 素材，
+# 其中 creative.media.is_ad="1"，display_time="5"。
+# 本版拒绝该独立接口，不把它强制改成 {} 或 204，不处理整个域名。
+# 客户端如何处理拒绝（跳过、重试、留白或回退）尚待用户真机测试。
+
+[URL Rewrite]
+(?i)^https://amap-aos-info-nogw\.amap\.com/ws/aos/alimama/splash_screen_rt(?:\?|$) _ reject
+
+[Map Local]
+# 保留 v0.1 的旧接口规则；在本次 HAR 中未出现，不等于永远不再使用。
+# 旧接口依据：https://github.com/Repcz/Tool/blob/X/Surge/Module/Kelee/Amap_remove_ads.sgmodule
+(?i)^https://m5\.amap\.com/ws/valueadded/alimama/splash_screen\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
+
+[MITM]
+# 仅追加两个必要主机，不替换 CA、不关闭服务端证书验证。
+# MITM 会覆盖这些主机上的其他 HTTPS 请求，并非仅广告路径。
+hostname = %APPEND% m5.amap.com, amap-aos-info-nogw.amap.com
