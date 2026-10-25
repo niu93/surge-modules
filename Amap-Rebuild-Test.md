@@ -1,56 +1,76 @@
-# 高德首页内容精简测试：v0.1.3-test6
+# 高德统一测试版七：v0.1.4-test7
 
-基于已成功的测试版五 `v0.1.2-test5`，新增尝试移除首页快捷条“回家／去单位／地点”以下的天气和图文信息流。独立测试文件，不覆盖正式版、test5 或其他测试文件。
+## 固定地址与基线
 
-## 保留
+所有测试版继续使用同一个安装地址，不新增测试订阅文件名：
 
-- 搜索框
-- 驾车、公交地铁、打车、酒店等功能入口
-- “回家／去单位／地点”快捷条
-- 底部导航
-- test5 原有个人页与打车页规则
+https://raw.githubusercontent.com/niu93/surge-modules/main/Amap-Rebuild-Test.sgmodule
 
-## 新增处理
+基于统一测试版六，原有8条原生jq、天气/旧开屏Map Local全部保留；本次增加1条分类栏jq与1条精确首页SSE响应脚本。正式版及历史测试文件不改。
 
-1. 对 `m5.amap.com/ws/valueadded/weather/v2` 使用本地空 JSON 响应，尝试移除天气卡。
-2. 对以下两个首页图文信息流响应，只清空 `data.modules.waterfall.data.list`，保留响应外壳、标题、header 和其他模块：
+## 新抓包确认的残留来源
 
-```text
-https://m5.amap.com/ws/info_bff/contentFeed
-https://m5.amap.com/ws/info_bff/ContentCenter
-```
+用户提供的331条HAR中，`ai.amap.com/v1/ai_rec/home_qs` 返回的是 **text/event-stream（SSE事件流）**，而不是单个JSON。天气、打车惊喜优惠券、榜单图片及问问AI卡片位于其中的PMT瀑布流；测试版六只清理普通JSON信息流，未处理这个来源。
 
-这用于移除截图下方的推荐图片和图文信息流，不封锁整个高德域名，也不改快捷条。
+同一SSE也包含“回家/去单位/地点”快捷条、导航接续和正常打车QS，不能整体拒绝或全清modules。
 
-## 打车优惠券卡说明
+`m5.amap.com/ws/info_bff/ContentCenter` 的 `HeaderTab` 模块确实含“关注、推荐、附近、周末出游、美食、休闲玩乐”六个分类，来源已在新HAR中确认。
 
-旧抓包中“打车惊喜优惠券”相关文案主要出现在打车营销接口；当前首页截图的优惠卡是否由同一接口下发，现有样本没有完全确认。因此 test6 不把所有优惠接口整段拒绝，避免影响打车页面。天气和图文流移除后，优惠卡可能仍显示；如果它仍在，需要新的当前首页响应证据再定向处理。
+## 本次精确处理
 
-## 安装
+### 1. SSE推荐卡
 
-```text
-https://raw.githubusercontent.com/niu93/surge-modules/main/Amap-Rebuild-Test-v3.sgmodule
-```
+只处理HTTPS主机 `ai.amap.com` 的精确 `/v1/ai_rec/home_qs` 响应：
 
-在 Surge 模块管理中安装或更新，确认描述为 `v0.1.3-test6`。先停用正式版、test5 和其他重复高德模块，只启用 test6。完全退出高德后重新打开首页。
+- 仅在PMT `aiPmtGenerate` 布局的已见 `WaterfallContainer.data.list` 中，过滤首页 `NestCard/sceneId=home_qs` 推荐项和明确标识的“打车惊喜优惠券”卡。
+- 列表变空时同步清空该容器已见标题，避免留下“精选榜单”标题。
+- 原样保留含 `freqSpot` 或 `scrollButton.list` 的整个快捷条布局及其路由、事件数据，不只保留两条文字。
+- 原样保留 `QSLocalCardContainer` 导航接续信号、正常打车QS、地图业务与未知卡片。不整体封锁home_qs、main-page-aiqs或地图渲染接口。
+- 如未来明确优惠券以独立PMT模块出现，仅在同一首页上下文与确切卡片标题匹配时删除，并协调对应布局引用；不删除未知用途的独立打车QS。
+- 保留事件顺序、seq、结束/分页字段及COMPLETE结束帧。非法JSON、未知或不完整事件透传，不执行响应内任何代码。
 
-需要 Surge iOS 5.14+、重写和 MITM。test6 不使用远程 JS；MITM 主机沿用 test5，不新增主机。不关闭服务端证书验证。
+这不会清除App已保存的私有缓存，也不能保证所有未来未知卡片均消失。保留导航接续意味着用户截图中快捷条上方的行程提示不在删除范围。
 
-## 验证与限制
+### 2. 图文六分类栏
 
-- 保留 test5 的有效执行规则逐字一致。
-- 17 项 jq 结构测试、7 组 URL 测试通过。
-- 旧抓包中 contentFeed 和 ContentCenter 的真实响应均只清空 waterfall 列表，其他字段保留。
-- **未验证**当前首页真实响应、Surge TF 实时命中、天气卡是否完全收起、优惠券卡是否同源、缓存、空占位和业务回归。
+只在ContentCenter的 `header.card_id=HeaderTab` 列表内，按已见的六个 `explore_page_tab_rec_*` key过滤。若只剩空列表，删除HeaderTab外壳并移除区域中指向header的引用；未知分类与其他模块保留。
 
-如果出现空白区域、首页异常、搜索/导航问题，立即停用 test6，回滚到 test5：
+这是图文的内容分类栏，不是底部“首页/探索/长按说话/打车/我的”导航。本版没有实现底部导航或右上“企”隐藏。ContentCenter是共用内容接口，同一分类头在其他内容页面出现时也可能被过滤，不修改账户或地图功能。
 
-```text
-https://raw.githubusercontent.com/niu93/surge-modules/b21a9d38d2014824f2c3b85052e498402eb3706d/Amap-Rebuild-Test-v2.sgmodule
-```
+## 新增脚本与解密范围
 
-正式版仍保持：
+SSE不是单一JSON，无法直接用原生http-response-jq读取；因此本次为这一精确路径新增响应脚本。源码见 `amap-home-sse.js`，模块引用已核验的固定GitHub提交，不随main源码自动漂移。脚本无网络请求、存储、通知或敏感日志。
 
-```text
-https://raw.githubusercontent.com/niu93/surge-modules/main/Amap.sgmodule
-```
+使用 `requires-body=true`，缓冲上限512KiB；响应超限Surge会跳过脚本透传。流式响应需等正文完成才能处理，可能影响首屏到达时间或内存占用；当前实现尚未在Surge内核验证，持续流或缓存可能导致无效。
+
+MITM在原来的 `m5.amap.com,m5-zb.amap.com` 基础上只新增 `ai.amap.com`。解密按主机生效，所以该主机其他HTTPS请求也会进入解密范围，尽管脚本只匹配home_qs；不改CA、不关闭服务端证书验证。
+
+## 使用与验收
+
+更新已装的统一测试模块，确认版本为 **v0.1.4-test7**。只启用一个高德模块，停用重复高德规则后单独对照。需要Surge iOS5.14+，本次需同时开启 **重写、脚本、MITM**；首次加载脚本需能访问GitHub Raw。
+
+完全退出高德再进入首页，检查：
+
+- 搜索、功能宫格、回家/去单位快捷条仍在且可点击；
+- 天气、优惠券、排行榜、问问AI等已知下方推荐卡减少/消失；
+- 六分类栏是否收起，有无空位、持续加载或卡顿；
+- 已成功的个人页精简、正常打车/导航是否仍正常。
+
+页面可能受本地缓存、增量更新或未知模板影响。只对已见结构负责，不承诺所有内容必定消失；没有真机验证前不得把离线通过称作去除成功。不要求卸载、清空高德数据或重复上传同样整份HAR。不要驾驶时测试。
+
+## 已完成的离线核验
+
+- 27项JavaScript检查通过：换行格式、多行data帧、异常/不完整帧、单次done、未知卡保留、快捷条/导航保护及4份真实SSE。
+- 两份真实SSE分别过滤5项榜单/AI推荐、2项天气/券推荐；另外两份SSE完全透传，真实快捷条、导航和独立正常打车QS事件未变。
+- 19项分类栏jq检查通过；新HAR的242个可解析JSON无新增jq错误。13条ContentCenter响应中6条有已知header/空壳变化，其余保持。
+- 12组脚本URL边界检查通过。未验证Surge实际加载/脚本缓冲、实时解密/命中、UI收起、私有缓存及真实业务回归。
+
+## 备份回滚
+
+修改前已完整备份统一测试版六及仓库9个原有文件，不重写历史。异常时停用测试版七，再使用固定测试版六回滚地址，不同时启用：
+
+https://raw.githubusercontent.com/niu93/surge-modules/83cae339fcf37fff4cb6d3dc290a12310b92d4a7/Amap-Rebuild-Test.sgmodule
+
+后续新测试仍只更新统一路径；固定提交链接仅用于回滚。正式版 `Amap.sgmodule` 本次不变。
+
+没有上传HAR、头像、账号、令牌、坐标、出行信息或CA私钥，未重放任何业务请求。所有真实响应测试在本地进行。

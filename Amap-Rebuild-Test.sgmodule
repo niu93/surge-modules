@@ -1,9 +1,9 @@
 #!name=高德地图·首页内容精简测试
-#!desc=v0.1.3-test6：基于测试版五，尝试去掉回家/去单位快捷条以下的天气、优惠卡和推荐图文；保留搜索、功能入口和快捷条。需Surge iOS5.14+；真机效果待验证。
+#!desc=v0.1.4-test7：保留测试版六，新增首页home_qs流式推荐卡过滤与图文六分类栏精简；保护回家/去单位快捷条和导航接续。新增精确响应脚本，需重写/脚本/MITM；实际UI待验证。
 
-# 正式发布v0.1.1；执行规则与已保存的v0.1.1-test3逐字一致，仅调整元数据和说明。
+# 以统一路径测试版六为基线；保留已有个人页和打车原生规则。
 # 仅保留第一版的旧开屏映射，不恢复v0.2以后的实时开屏拒绝。
-# 本模块不下载或执行任何远程脚本。
+# 原有JSON规则保持；首页SSE新增一条固定源码版本的精确响应脚本。
 # jq按已核验栏位/类型处理，不固定素材文件名，范围比v0.4精确图片过滤稍宽。
 # 5303栏位的当单立减气泡及5601类图标将不再展示；优惠领取与使用效果待真机确认。
 # 新增营销皮肤槽试验：尚未证明周中省钱或蓝色代驾横幅均由此槽渲染。
@@ -31,7 +31,15 @@ http-response-jq (?i)^https?://.*\.amap\.com/ws/shield/dsp/profile/index/nodefaa
 http-response-jq (?i)^https://m5\.amap\.com/ws/info_bff/contentFeed(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object) and (.data.modules | object) and (.data.modules.waterfall | object) and (.data.modules.waterfall.data | object)) then if (.data.modules.waterfall.data.list | type) == "array" then .data.modules.waterfall.data.list = [] else . end else . end) catch $original'
 http-response-jq (?i)^https://m5\.amap\.com/ws/info_bff/ContentCenter(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object) and (.data.modules | object) and (.data.modules.waterfall | object) and (.data.modules.waterfall.data | object)) then if (.data.modules.waterfall.data.list | type) == "array" then .data.modules.waterfall.data.list = [] else . end else . end) catch $original'
 
+# 删除已确认六分类HeaderTab及其空壳引用，保留未知分类。
+http-response-jq (?i)^https://m5\.amap\.com/ws/info_bff/ContentCenter(?:\?|$) '. as $original | try (def object: type == "object"; def target_tab: if object then .key as $key | (["explore_page_tab_rec_focusOn", "explore_page_tab_rec_city", "explore_page_tab_rec_nearBy", "explore_page_tab_rec_travel", "explore_page_tab_rec_food", "explore_page_tab_rec_shopping"] | index($key)) != null else false end; if (object and (.data | object) and (.data.modules | object)) then if (.data.modules.header | object) then if (.data.modules.header.card_id == "HeaderTab" and (.data.modules.header.data | object)) then if (.data.modules.header.data.list | type) == "array" then .data.modules.header.data.list as $before | ($before | map(select(target_tab | not))) as $after | if ($after | length) < ($before | length) or ($before | length) == 0 then if ($after | length) == 0 then del(.data.modules.header) | if (.data.regions | object) then .data.regions |= with_entries( if (.value | type) == "array" then .value |= map(select(. != "header")) else . end ) else . end else .data.modules.header.data.list = $after end else . end else . end else . end else . end else . end) catch $original'
+
+[Script]
+# home_qs是SSE而非单个JSON，逐个完整事件处理，保留快捷条和结束帧。
+# 固定已审阅的源码提交；响应超512KiB由Surge跳过处理，异常透传。
+amap-home-sse-test7 = type=http-response,pattern=^https://ai\.amap\.com/v1/ai_rec/home_qs(?:\?|$),requires-body=true,max-size=524288,timeout=5,script-path=https://raw.githubusercontent.com/niu93/surge-modules/0641e985b649638dda672492202a42c9d51cefcf/amap-home-sse.js
+
 [MITM]
 # 追加而非覆盖；解密是主机级别，不仅覆盖上述路径。
 # 不修改CA，不关闭服务端证书验证。
-hostname = %APPEND% m5.amap.com, m5-zb.amap.com
+hostname = %APPEND% m5.amap.com, m5-zb.amap.com, ai.amap.com
