@@ -1,0 +1,37 @@
+#!name=高德地图·首页内容精简测试
+#!desc=v0.1.3-test6：基于测试版五，尝试去掉回家/去单位快捷条以下的天气、优惠卡和推荐图文；保留搜索、功能入口和快捷条。需Surge iOS5.14+；真机效果待验证。
+
+# 正式发布v0.1.1；执行规则与已保存的v0.1.1-test3逐字一致，仅调整元数据和说明。
+# 仅保留第一版的旧开屏映射，不恢复v0.2以后的实时开屏拒绝。
+# 本模块不下载或执行任何远程脚本。
+# jq按已核验栏位/类型处理，不固定素材文件名，范围比v0.4精确图片过滤稍宽。
+# 5303栏位的当单立减气泡及5601类图标将不再展示；优惠领取与使用效果待真机确认。
+# 新增营销皮肤槽试验：尚未证明周中省钱或蓝色代驾横幅均由此槽渲染。
+# 不修改右上企、头像、券和下方功能网格；探索/长按说话底栏仍未改。
+
+[Map Local]
+(?i)^https://m5\.amap\.com/ws/valueadded/weather/v2(?:\?|$) data-type=text data="{}" status-code=200 header="Content-Type:application/json"
+(?i)^https://m5\.amap\.com/ws/valueadded/alimama/splash_screen\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
+
+[Body Rewrite]
+http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object)) then if ((try .data.popup catch null) | object) then (if (.data.popup.popup_list | type) == "array" then .data.popup.popup_list = [] else . end) | (if (.data.popup.dataList | type) == "array" then .data.popup.dataList |= map( if (object and (.protocol | object)) then if ((.protocol.popup_list | type) == "array" and (.protocol.popup_list | length) > 0) then .protocol.popup_list = [] | select((.protocol | keys | map(select(. != "popup_list")) | length) > 0) else . end else . end ) else . end) else . end else . end) catch $original'
+http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object)) then if (.data.bubble | object) then if (.data.bubble["5303"] | type) == "array" then .data.bubble["5303"] |= map( select( if object then if (.award_list | type) == "array" then any(.award_list[]; if object then .award_title == "当单立减" else false end) | not else true end else true end ) ) else . end else . end else . end) catch $original'
+http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource/home(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object)) then if (.data.other | object) then if (.data.other.data | object) then if (.data.other.data.icon | object) then if (.data.other.data.icon.icon_list | type) == "array" then .data.other.data.icon.icon_list |= map( select(if object then (.inner_type | tostring) != "5601" else true end) ) else . end else . end else . end else . end else . end) catch $original'
+
+# 仅在已知营销皮肤结构匹配时删除skin槽；未知/混合结构透传。
+http-response-jq (?i)^https://m5-zb\.amap\.com/ws/boss/car/order/content_info(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object)) then if (.data.lubanData | object) then if (.data.lubanData.skin | object) then if (.data.lubanData.skin.dataList | type) == "array" then if ((.data.lubanData.skin.dataList | length) > 0 and all(.data.lubanData.skin.dataList[]; if object then if (.protocol | object) then ((.protocol.skin_list | type) == "array") else false end else false end)) then del(.data.lubanData.skin) else . end else . end else . end else . end else . end) catch $original'
+
+# 用户选择页面全精简：仅过滤五类已确认展示模块，同步移除其布局引用。
+http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource/home(?:\?|$) '. as $original | try (def object: type == "object"; def target: if object then .banner_type as $kind | if $kind == "union" then (.dataList | type) == "array" elif ($kind | type) == "string" then if (["coupon", "ad", "vip", "vip_exchange"] | index($kind)) != null then (.show_info | type) == "array" else false end else false end else false end; if (object and (.data | object)) then if (.data.banner | object) then if (.data.banner.data | object) then if (.data.banner.data.banner | type) == "array" then .data.banner.data.banner as $before | ($before | map(select(target | not))) as $after | ($before | map(select(target) | .banner_type) | unique) as $removed_types | ($after | map(if object then .banner_type else null end)) as $kept_types | ($removed_types | map(. as $kind | select(($kept_types | index($kind)) == null))) as $fully_removed | if ($removed_types | length) > 0 then .data.banner.data.banner = $after | if (.data.banner.data.config | object) then reduce ["first", "second", "third"][] as $key (.; if (.data.banner.data.config[$key] | type) == "array" then .data.banner.data.config[$key] |= map( select(if type == "string" then . as $kind | ($fully_removed | index($kind)) == null else true end) ) else . end) else . end else . end else . end else . end else . end else . end) catch $original'
+
+# 个人页兼容测试：匹配nodefaas后缀，支持dataKey/dataType卡片结构。
+http-response-jq (?i)^https?://.*\.amap\.com/ws/shield/dsp/profile/index/nodefaas(?:[^?]*)?(?:\?|$) '. as $original | try (def object: type == "object"; def lower_key: if object then (.dataKey // .dataType // "") else "" end; def is_removed_card: (lower_key) as $key | (["UserCircleCard", "UserCircleCardV3", "MineMemberRecommendTaskCardV2", "PopularActivitiesCardV2", "PopularActivitiesCardV5", "ContentCenterFeedCard"] | index($key)) != null; def is_entrance_card: (lower_key) as $key | $key == "MineNewBEntranceCardV4"; def clean_card: if object and is_entrance_card and (.content | object) then (if (.content.entranceList_2 | type) == "array" then .content.entranceList_2 = [] else . end) | (if (.content.entranceList_1 | type) == "array" then .content.entranceList_1 |= map( if object and ((.id == 10 or .id == "10") and .title == "待评价" and (.tips | type) == "array") then .tips = [] else . end ) else . end) else . end; def clean_cards: if (.data.cardList | type) == "array" then .data.cardList |= map(select(is_removed_card | not) | clean_card) elif (.data.cardList | object) then .data.cardList |= with_entries(select((.value | is_removed_card) | not) | .value |= clean_card) else . end; if (object and (.data | object)) then clean_cards else . end) catch $original'
+
+# 首页推荐图文流：只清空waterfall.list，保留响应外壳和其他模块。
+http-response-jq (?i)^https://m5\.amap\.com/ws/info_bff/contentFeed(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object) and (.data.modules | object) and (.data.modules.waterfall | object) and (.data.modules.waterfall.data | object)) then if (.data.modules.waterfall.data.list | type) == "array" then .data.modules.waterfall.data.list = [] else . end else . end) catch $original'
+http-response-jq (?i)^https://m5\.amap\.com/ws/info_bff/ContentCenter(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object) and (.data.modules | object) and (.data.modules.waterfall | object) and (.data.modules.waterfall.data | object)) then if (.data.modules.waterfall.data.list | type) == "array" then .data.modules.waterfall.data.list = [] else . end else . end) catch $original'
+
+[MITM]
+# 追加而非覆盖；解密是主机级别，不仅覆盖上述路径。
+# 不修改CA，不关闭服务端证书验证。
+hostname = %APPEND% m5.amap.com, m5-zb.amap.com
