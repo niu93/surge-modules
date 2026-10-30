@@ -1,0 +1,25 @@
+# Rex Proxy - Surge RULE-SET
+# Version: 1.0.0
+# Entries: 21
+# Policy is assigned by the RULE-SET line in your main profile.
+DOMAIN-SUFFIX,mushroomtrack.com
+DOMAIN-SUFFIX,missav.media
+DOMAIN-SUFFIX,missav.ws
+DOMAIN-SUFFIX,missav.fans
+DOMAIN-KEYWORD,surrit
+DOMAIN-SUFFIX,mrstcdn.store
+DOMAIN-SUFFIX,pornhub.com
+DOMAIN-SUFFIX,phncdn.com
+DOMAIN-SUFFIX,workers.dev
+DOMAIN-SUFFIX,github.com
+DOMAIN-SUFFIX,githubusercontent.com
+DOMAIN-SUFFIX,wsrv.nl
+DOMAIN-SUFFIX,eporner.com
+DOMAIN-SUFFIX,sb-cd.com
+DOMAIN-SUFFIX,xvideos.com
+DOMAIN-SUFFIX,xvideos-cdn.com
+DOMAIN-SUFFIX,xhamster.com
+DOMAIN-SUFFIX,xhcdn.com
+DOMAIN-SUFFIX,ahcdn.com
+DOMAIN-SUFFIX,wowxxx.to
+DOMAIN-SUFFIX,fpvcdn.com

@@ -1,0 +1,5 @@
+# Rex TW - Surge RULE-SET
+# Version: 1.0.0
+# Entries: 1
+# Policy is assigned by the RULE-SET line in your main profile.
+DOMAIN-SUFFIX,jable.tv
