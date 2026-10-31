@@ -1,7 +1,8 @@
 #!name=高德地图·首页内容精简测试
-#!desc=v0.1.4-test7：保留测试版六，新增首页home_qs流式推荐卡过滤与图文六分类栏精简；保护回家/去单位快捷条和导航接续。新增精确响应脚本，需重写/脚本/MITM；实际UI待验证。
+#!desc=v0.1.5-test8：基于test7修订版本要求、注释和开屏路径边界；保留首页SSE推荐卡与六分类栏精简，实际UI待验证。
+#!requirement=CORE_VERSION>=20
 
-# 以统一路径测试版六为基线；保留已有个人页和打车原生规则。
+# 以统一路径测试版七为基线；保留已有个人页和打车原生规则。
 # 仅保留第一版的旧开屏映射，不恢复v0.2以后的实时开屏拒绝。
 # 原有JSON规则保持；首页SSE新增一条固定源码版本的精确响应脚本。
 # jq按已核验栏位/类型处理，不固定素材文件名，范围比v0.4精确图片过滤稍宽。
@@ -11,7 +12,7 @@
 
 [Map Local]
 (?i)^https://m5\.amap\.com/ws/valueadded/weather/v2(?:\?|$) data-type=text data="{}" status-code=200 header="Content-Type:application/json"
-(?i)^https://m5\.amap\.com/ws/valueadded/alimama/splash_screen\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
+(?i)^https://m5\.amap\.com/ws/valueadded/alimama/splash_screen(?:\?|$) data-type=text data="{}" status-code=200 header="Content-Type:application/json"
 
 [Body Rewrite]
 http-response-jq (?i)^https://m5-zb\.amap\.com/ws/promotion-web/resource(?:\?|$) '. as $original | try (def object: type == "object"; if (object and (.data | object)) then if ((try .data.popup catch null) | object) then (if (.data.popup.popup_list | type) == "array" then .data.popup.popup_list = [] else . end) | (if (.data.popup.dataList | type) == "array" then .data.popup.dataList |= map( if (object and (.protocol | object)) then if ((.protocol.popup_list | type) == "array" and (.protocol.popup_list | length) > 0) then .protocol.popup_list = [] | select((.protocol | keys | map(select(. != "popup_list")) | length) > 0) else . end else . end ) else . end) else . end else . end) catch $original'
@@ -37,7 +38,7 @@ http-response-jq (?i)^https://m5\.amap\.com/ws/info_bff/ContentCenter(?:\?|$) '.
 [Script]
 # home_qs是SSE而非单个JSON，逐个完整事件处理，保留快捷条和结束帧。
 # 固定已审阅的源码提交；响应超512KiB由Surge跳过处理，异常透传。
-amap-home-sse-test7 = type=http-response,pattern=^https://ai\.amap\.com/v1/ai_rec/home_qs(?:\?|$),requires-body=true,max-size=524288,timeout=5,script-path=https://raw.githubusercontent.com/niu93/surge-modules/0641e985b649638dda672492202a42c9d51cefcf/amap-home-sse.js
+amap-home-sse = type=http-response,pattern=^https://ai\.amap\.com/v1/ai_rec/home_qs(?:\?|$),requires-body=true,max-size=524288,timeout=5,script-path=https://raw.githubusercontent.com/niu93/surge-modules/0641e985b649638dda672492202a42c9d51cefcf/amap-home-sse.js
 
 [MITM]
 # 追加而非覆盖；解密是主机级别，不仅覆盖上述路径。
