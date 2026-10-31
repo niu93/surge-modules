@@ -1,5 +1,5 @@
 #!name=高德地图·首页内容精简测试
-#!desc=v0.1.5-test8：基于test7修订版本要求、注释和开屏路径边界；保留首页SSE推荐卡与六分类栏精简，实际UI待验证。
+#!desc=v0.1.6-test9：基于test8新增frogserver明确营销/弹窗配置的受保护实验；其余首页、个人页、打车和SSE规则保持不变，实际UI待验证。
 #!requirement=CORE_VERSION>=20
 
 # 以统一路径测试版七为基线；保留已有个人页和打车原生规则。
@@ -34,6 +34,9 @@ http-response-jq (?i)^https://m5\.amap\.com/ws/info_bff/ContentCenter(?:\?|$) '.
 
 # 删除已确认六分类HeaderTab及其空壳引用，保留未知分类。
 http-response-jq (?i)^https://m5\.amap\.com/ws/info_bff/ContentCenter(?:\?|$) '. as $original | try (def object: type == "object"; def target_tab: if object then .key as $key | (["explore_page_tab_rec_focusOn", "explore_page_tab_rec_city", "explore_page_tab_rec_nearBy", "explore_page_tab_rec_travel", "explore_page_tab_rec_food", "explore_page_tab_rec_shopping"] | index($key)) != null else false end; if (object and (.data | object) and (.data.modules | object)) then if (.data.modules.header | object) then if (.data.modules.header.card_id == "HeaderTab" and (.data.modules.header.data | object)) then if (.data.modules.header.data.list | type) == "array" then .data.modules.header.data.list as $before | ($before | map(select(target_tab | not))) as $after | if ($after | length) < ($before | length) or ($before | length) == 0 then if ($after | length) == 0 then del(.data.modules.header) | if (.data.regions | object) then .data.regions |= with_entries( if (.value | type) == "array" then .value |= map(select(. != "header")) else . end ) else . end else .data.modules.header.data.list = $after end else . end else . end else . end else . end else . end) catch $original'
+
+# 当前 HAR 确认的 frogserver：只删除明确营销/弹窗顶层配置，其他配置和未知结构透传。
+http-response-jq (?i)^https://m5\.amap\.com/ws/shield/frogserver/aocs/updatable/1(?:\?|$) '. as $original | try (if (.data | type) == "object" then del(.data.adCustomerRetainArchitecture, .data.marketing_resource_config, .data.taxi_activity, .data.tel_retention_popup) else . end) catch $original'
 
 [Script]
 # home_qs是SSE而非单个JSON，逐个完整事件处理，保留快捷条和结束帧。
