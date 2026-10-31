@@ -1,14 +1,20 @@
 #!name=高德地图·首页内容精简测试
-#!desc=v0.1.6-test9：基于test8新增frogserver明确营销/弹窗配置的受保护实验；其余首页、个人页、打车和SSE规则保持不变，实际UI待验证。
+#!desc=v0.1.7-test10：基于test9新增真实 splash_screen_rt 开屏广告精确拒绝；frogserver、首页、个人页、打车和SSE实验保持不变，实际UI待验证。
 #!requirement=CORE_VERSION>=20
 
 # 以统一路径测试版七为基线；保留已有个人页和打车原生规则。
-# 仅保留第一版的旧开屏映射，不恢复v0.2以后的实时开屏拒绝。
+# 保留旧 m5 开屏的空 JSON 映射；新增本次 HAR 已确认的实时 splash_screen_rt 精确拒绝。
 # 原有JSON规则保持；首页SSE新增一条固定源码版本的精确响应脚本。
 # jq按已核验栏位/类型处理，不固定素材文件名，范围比v0.4精确图片过滤稍宽。
 # 5303栏位的当单立减气泡及5601类图标将不再展示；优惠领取与使用效果待真机确认。
 # 新增营销皮肤槽试验：尚未证明周中省钱或蓝色代驾横幅均由此槽渲染。
 # 不修改右上企、头像、券和下方功能网格；探索/长按说话底栏仍未改。
+
+# 实时开屏接口在新 HAR 中确认返回 multipart 广告元数据与素材；本版只精确拒绝该路径。
+# 旧 m5 开屏仍使用空 JSON 映射；拒绝行为可能产生跳过、留白、重试或回退，需真机确认。
+
+[URL Rewrite]
+(?i)^https://amap-aos-info-nogw\.amap\.com/ws/aos/alimama/splash_screen_rt(?:\?|$) _ reject
 
 [Map Local]
 (?i)^https://m5\.amap\.com/ws/valueadded/weather/v2(?:\?|$) data-type=text data="{}" status-code=200 header="Content-Type:application/json"
@@ -46,4 +52,4 @@ amap-home-sse = type=http-response,pattern=^https://ai\.amap\.com/v1/ai_rec/home
 [MITM]
 # 追加而非覆盖；解密是主机级别，不仅覆盖上述路径。
 # 不修改CA，不关闭服务端证书验证。
-hostname = %APPEND% m5.amap.com, m5-zb.amap.com, ai.amap.com
+hostname = %APPEND% m5.amap.com, m5-zb.amap.com, ai.amap.com, amap-aos-info-nogw.amap.com
