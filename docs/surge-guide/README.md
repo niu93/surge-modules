@@ -1,6 +1,8 @@
 # Surge 去广告模块编写指南
 
-本指南整理 Surge iOS 的使用、抓包、模块编写和验证经验，面向需要为单个 App 编写精确去广告规则的用户。
+本指南整理 Surge iOS/macOS 的使用、抓包、模块编写、跨客户端转换和验证经验，面向需要为单个 App 编写精确规则的用户。
+
+**最后复核：2026-11-01。** 已结合 Surge 官方手册、Surge iOS 6 官方发行说明、公开模块项目和一批 Loon 插件的静态研究更新。本文中的文档结论不等于目标版本导入成功，更不等于真机 UI 已经验证。
 
 > 本文只包含通用方法和匿名示例，不包含任何个人 HAR、截图、账号、位置、出行记录、代理节点、Cookie、Token、CA 私钥或完整个人配置。
 
@@ -13,24 +15,30 @@
 
 ## 最重要的原则
 
-1. 先确认 App 当前真实请求，再写规则；不要从域名或字段名猜广告。
-2. 优先使用最小能力：精准拒绝 → Map Local → 原生 jq → 审阅后的脚本。
-3. 只改已确认的广告字段，保留正常业务、状态、分页和未知内容。
+1. 先确认 App 当前真实请求，再写规则；不要从域名、接口名称或字段名猜广告。
+2. 优先使用最小能力：精准规则/拒绝 → Map Local → 原生 Body Rewrite/jq → 审阅后的 HTTP 脚本。
+3. 只改已确认的广告字段，保留正常业务、状态、分页、未知内容和响应外壳。
 4. 静态测试通过不等于 Surge 命中，更不等于真机界面已经变化。
-5. 每次修改前备份完整模块、README、脚本和固定脚本依赖，保留不可变回滚地址。
-6. 测试版和正式版分开；所有测试版使用同一个更新地址，用版本描述区分。
+5. 每次修改前备份完整模块、README、脚本、远程依赖、commit 和 SHA256，保留不可变回滚地址。
+6. 测试版和正式版分开；测试版可以使用稳定统一地址，正式版只发布已验证的规则。
 7. 无法确认时直接说明“未实现”或“证据不足”，不要把按钮失效说成按钮隐藏。
+8. 公开源码可以学习，但没有许可证时只能阅读，不能默认复制、改名或重新发布。
 
-## 当前模块格式
+## 一、Surge 模块和请求处理模型
 
-Surge 模块通常包含：
+### 1. 模块不是完整配置
+
+`.sgmodule` 是主配置的补丁，不能替代完整配置，也不能通过模块修改 `[Proxy]` 或 `[Proxy Group]`。模块设置优先级高于主配置；支持的脚本、重写等行通常会插入原配置相应区段的前面，因此模块可能改变规则或脚本的优先顺序。
+
+模块中的 `[Rule]` 只能使用 Surge 模块允许的内部策略，例如 `DIRECT`、`REJECT` 和 `REJECT-TINYGIF`。如果需求是把域名交给用户主配置中的自定义策略组，例如 `Proxy`、`JP`、`台湾节点`，不要硬塞进 `.sgmodule`：应提供不带策略列的远程 `RULE-SET`，再由主配置绑定策略。
+
+典型模块结构：
 
 ```ini
 #!name=模块名称
-#!desc=版本号和简短作用说明
-
-[Map Local]
-...
+#!desc=v1.0.0：简短说明
+#!requirement=CORE_VERSION>=20
+#!system=iOS
 
 [Body Rewrite]
 ...
@@ -39,58 +47,78 @@ Surge 模块通常包含：
 ...
 
 [MITM]
-hostname = %APPEND% example.com
+hostname = %APPEND% api.example.com
 ```
 
-模块是主配置补丁，不是完整配置文件；不能用模块修改 `[Proxy]` 和 `[Proxy Group]`。`%APPEND%` 用于保留主配置已有列表并追加内容。
+`%APPEND%` 追加原配置内容，`%INSERT%` 插入原配置前部；它们与 `#!arguments` 的参数占位符不是一回事。
 
-## 安全范围
+### 2. HTTP 处理顺序和脚本冲突
 
-MITM 按主机名生效，不按路径生效。即使模块只改一个广告路径，该主机上的其他 HTTPS 请求也可能被解密。因此应尽量缩小 hostname 列表，使用自己的 CA，不关闭服务端证书验证，不分享 CA 私钥。
+当前官方文档给出的处理方向可概括为：
 
+```text
+Header Rewrite → URL Rewrite → Body Rewrite → HTTP Script
+```
 
----
+同一请求可以分别运行一个匹配的 `http-request` 脚本和一个匹配的 `http-response` 脚本；同一方向不是所有匹配脚本都会自动串联，通常由配置顺序中的第一个启用匹配脚本执行。两个重叠的响应脚本模块不一定会“一个接着一个”修改正文。
 
-# Surge 模块写法与选择方法
+原生 Body Rewrite 不同：多个匹配的 Body Rewrite 规则可以按顺序执行，后一个规则接收前一个规则的结果。因此相关 jq 可以合并为一条便于审查的表达式，也可以拆成有明确前后关系的多步，但每一步都必须适应上一步的输出结构。
 
-## 1. 先判断广告承载形式
+### 3. URL Rewrite、Map Local 和 Body Rewrite 不是同一种操作
 
-| 证据 | 优先方法 | 注意 |
+| 目标证据 | 优先机制 | 关键差异 |
 |---|---|---|
-| 独立广告域名或素材请求 | 精准 `DOMAIN` / `URL Rewrite reject` | 共享 CDN 不能整域拒绝 |
-| 接口必须返回成功结构 | `Map Local` | `{}`、`[]`、空正文和 204 不是同义 |
-| 广告与业务数据混在 JSON | `http-response-jq` | 只删已确认字段/列表 |
-| 需要复杂分支或协议处理 | `http-response` 脚本 | 审阅源码、固定版本、控制内存 |
-| protobuf/gRPC/二进制 | binary-body 脚本 | 必须理解压缩、帧长、偏移、校验 |
-| SSE/流式响应 | SSE 响应脚本 | 按完整帧处理，保留结束事件 |
+| 只承载广告的独立请求 | 精准 URL Rewrite `reject` | 请求被拒绝，可能触发重试或空位 |
+| 客户端需要成功响应 | Map Local | 跳过上游，直接构造本地响应 |
+| 广告和正常业务混在 JSON | `http-response-jq` | 保留响应结构，只删字段或元素 |
+| 多层分支、流式、协议复杂 | HTTP response script | 需要审阅、超时、大小和异常回退 |
+| protobuf/gRPC/其他二进制 | binary-body 脚本 | 必须先确认 schema、帧、压缩和长度 |
+| SSE | 帧感知的 response script | 不能把网络 chunk 当成 JSON |
 
-## 2. URL Rewrite
+不要把其他客户端的 `reject-200`、`reject-dict`、`reject-array` 直接当作 Surge 语法。`{}`、`[]`、空正文、204、Map Local 和 REJECT 对客户端来说可能是完全不同的契约。
+
+## 二、规则和响应改写
+
+### 1. URL 匹配
 
 ```ini
 [URL Rewrite]
 ^https://ads\.example\.com/v1/banner(?:\?|$) _ reject
 ```
 
-正则应限制协议、主机、路径和查询边界。不要使用笼统的 `.*ad.*`。HTTPS 请求需要目标主机在 MITM 列表中，且请求必须经过 HTTP 引擎。
+正则应限制：
 
-## 3. Map Local
+- 协议和大小写；
+- 精确主机；
+- 精确路径；
+- 查询参数边界；
+- 必要时的请求方法或 User-Agent。
+
+不要使用：
+
+```regex
+.*ad.*
+```
+
+也不要因为发现一个广告接口，就整域名拒绝共享的业务主机。URL Rewrite 的具体规则类型有自己的匹配限制，不能把“多条规则按顺序处理”的概括套到所有 header-mode 行为上。
+
+### 2. Map Local
 
 ```ini
 [Map Local]
-(?i)^https://ads\.example\.com/config\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
+(?i)^https://api\.example\.com/config(?:\?|$) data-type=text data="{}" status-code=200 header="Content-Type:application/json"
 ```
 
-Map Local 会跳过上游请求并直接返回本地响应。返回值必须符合目标接口契约；如果客户端期待业务字段，空对象可能导致空白或重试。
+Map Local 会跳过上游请求并构造本地响应。`data-type=text` 的默认类型不是 JSON，因此需要时显式指定 `Content-Type`。返回值必须符合目标 App 的接口契约；客户端期待的可能是带状态字段的对象，而不是简单 `{}`。
 
-## 4. 原生 jq
+### 3. 原生 jq
 
 ```ini
 [Body Rewrite]
-http-response-jq ^https://api\.example\.com/home\? \
-  'if (.data.cards | type) == "array" then .data.cards |= map(select(.kind != "ad")) else . end'
+http-response-jq ^https://api\.example\.com/home(?:\?|$) 'if (.data.cards | type) == "array" then .data.cards |= map(select(if type == "object" then .kind != "ad" else true end)) else . end'
 ```
 
-实际模块中通常压成一行。应使用类型保护：
+更复杂的规则应先定义类型保护：
 
 ```jq
 def object: type == "object";
@@ -99,199 +127,225 @@ if (object and (.data | object) and (.data.cards | type) == "array") then
 else . end
 ```
 
-建议覆盖这些输入：根对象、数组、`null`、字段缺失、字段类型错误、空列表、混合列表、未知对象和非法 JSON。异常时保留原响应。
+实践要求：
 
-jq Body Rewrite 需要 Surge iOS 5.14.0+；响应正文必须是有效 JSON。正文超过限制或规则异常时，官方行为可能是跳过并透传，不能当作一定修改成功。
+- 只根据稳定的业务键、类型或 ID 删除已确认卡片；
+- 保留未知元素，不按全局字符串删除 `ad`；
+- 字段缺失、类型错误、根节点错误时原样透传；
+- 如果删除卡片会留下布局引用，只在关系已确认时同步删除引用；
+- `jq empty` 不等于发送空正文，官方行为是保留原正文；
+- 输入必须是有效 JSON，非法 jq 或非法 JSON 会跳过并记录警告；
+- 原生 Body Rewrite 需要缓冲正文，不能对全域接口随意开启。
 
-## 5. HTTP Response 脚本
+当前官方文档列出的限制：请求正文缓冲上限为 32 MB；响应修改上限为 iOS 1 MB、macOS 10 MB。过大的响应会放弃修改并原样流式传递；请求正文超过硬限制可能导致连接失败。jq Body Rewrite 的最低版本不能由普通 Body Rewrite 的版本号推断，应查看对应功能要求并在目标 Surge 版本导入验证。
 
-现代声明：
+建议至少测试：根对象、数组、`null`、字段缺失、错误类型、空列表、混合列表、未知对象、非法 JSON、超过大小限制的响应，以及前一条 jq 修改后的输出。
+
+### 4. HTTP Response Script
+
+现代 Surge 声明示例：
 
 ```ini
 [Script]
-filter = type=http-response,pattern=^https://api\.example\.com/home,requires-body=true,max-size=262144,timeout=5,script-path=https://raw.githubusercontent.com/example/repo/COMMIT/filter.js
+filter = type=http-response,pattern=^https://api\.example\.com/home(?:\?|$),requires-body=true,max-size=262144,timeout=5,script-path=https://raw.githubusercontent.com/example/repo/COMMIT/filter.js
 ```
 
-基本安全模板：
+安全要求：
 
-```javascript
-(function () {
-  var result = {};
-  try {
-    if (typeof $response !== "undefined" &&
-        typeof $response.body === "string" &&
-        $response.body.length > 0) {
-      var obj = JSON.parse($response.body);
-      // 仅在结构和广告条件都确认后修改 obj。
-      result = { body: JSON.stringify(obj) };
-    }
-  } catch (_) {
-    result = {};
-  }
-  $done(result);
-})();
+- `$done()` 或 `$done({})` 表示保留原交易；`abort:true` 才是主动中断；
+- 每条正常、异常、解析失败和超时路径都必须恰好完成一次；
+- 使用 `try/catch`，失败时不要构造伪造的成功 JSON；
+- `requires-body=true` 会缓冲完整正文，只匹配必要的 URL；
+- `max-size` 和 `timeout` 应显式设置并有理由；
+- 当前官方文档中，响应脚本 `max-size` 默认是 iOS 1 MB/macOS 10 MB，脚本超限响应会透传；
+- HTTP 脚本默认超时为 5 秒，超时不应被宣传成必然原样透传；
+- 没有 `requires-body=true` 却返回正文不是安全的修改方式；
+- 脚本方向按首个启用匹配执行，不能依赖多个脚本自动串联；
+- 不记录完整正文、Cookie、Authorization、Token、坐标或带查询参数的完整 URL。
+
+脚本应先在内存中完成解析、修改、重新编码和校验，全部成功后再一次性返回。对于二进制、压缩或带长度字段的响应，不能返回半截数据。
+
+## 三、SSE、protobuf 和二进制
+
+### 1. SSE
+
+SSE 的网络读取块不等于完整事件。脚本应：
+
+1. 缓冲直到空行形成完整帧；
+2. 只解析合法 `data:` JSON；
+3. 只修改已确认的卡片或列表；
+4. 保留未知事件、顺序、`seq`、`has_more`、分页字段和 `COMPLETE` 等结束标记；
+5. 非 JSON、异常和不完整帧原样保留。
+
+不能逐网络 chunk `JSON.parse`，不能把整个流替换成 `{}`，不能因为一个广告卡片而删除快捷条、导航接续卡或正常业务共用的容器。
+
+### 2. protobuf/gRPC
+
+二进制正文不能当 UTF-8 JSON。开始改写前必须确认：
+
+- 是否真的是 protobuf/gRPC，而不是普通 `octet-stream`；
+- gRPC 5 字节帧头、大小端和消息长度；
+- gRPC-Web 与普通 gRPC 的差异；
+- 压缩标志、gzip 解压和重新编码；
+- protobuf schema、未知字段和嵌套消息；
+- offset、length、checksum/MD5；
+- `Content-Encoding`、`Content-Length`、trailer 和最终 body 是否一致。
+
+应分别测试 identity/gzip、空 body、错误 frame、未知字段、非零 buffer offset、多消息和流式响应。没有 schema 或长度/校验算法证据时，不发布二进制重写。
+
+## 四、MITM、DNS 和 QUIC
+
+### MITM
+
+```ini
+[MITM]
+hostname = %APPEND% m5.amap.com, m5-zb.amap.com
 ```
+
+MITM 是主机级别，不是路径级别。即使只修改一个 URL，该主机的其他 HTTPS 请求也可能被解密。只加入必要主机，使用自己生成并信任的 CA，不把 CA 私钥、`ca-p12` 或口令放进模块，不默认设置 `skip-server-cert-verify=true`。
 
 注意：
 
-- 每次脚本必须完成一次 `$done`；`$done({})` 表示原样透传，`abort:true` 才是中断。
-- `requires-body=true` 会缓冲完整正文，不应匹配全域。
-- 当前官方文档：响应超出 `max-size` 会跳过脚本透传；请求超限的行为不同。
-- 同一请求/响应最多运行一个匹配的同方向脚本；重复模块可能互相覆盖。
-- 远程脚本会自动下载/缓存。生产模块应固定不可变 commit URL，记录 SHA256，审阅每次更新。
+- 模块追加 hostname 不能替代主配置启用 MITM 和系统信任 CA；
+- hostname 排除项按顺序匹配，前面的排除可能阻止后面的追加；
+- 证书固定可能导致 App 拒绝连接；
+- “规则显示在模块详情”不能证明 HTTPS 正文真的被解密。
 
-## 6. 二进制、gRPC 和 SSE
+### DNS 和 HTTPDNS
 
-### 二进制 / protobuf
+普通 DNS、DoH、DoT、HTTPDNS 和 App 自己的 IP 解析不是同一层。不要为了实现一个 HTTP 正文模块擅自修改用户全局 DNS。HTTPDNS 拦截器这类集中依赖可能影响多个 App、CDN、登录、推送和媒体服务，应单独测试、单独说明，不要自动并入 App 专用模块。
 
-不能把二进制正文当 UTF-8 JSON。公开模块实例显示，正确流程可能包括：读取 Uint8Array、解析 protobuf schema、处理压缩、保留未知字段、修改目标消息、重算帧长度/偏移/校验，再返回完整 body。缺少 schema 或校验算法时不要猜。
+### Surge iOS 6 的 QUIC 变化
 
-### SSE
+Surge iOS 6 提供 Adaptive QUIC Blocking：当 App 能回退 TCP 时才阻止 QUIC，并按主机记忆结果；QUIC-only App 可以继续使用 QUIC。它有助于需要 HTTP/TCP 观察的场景，但不等于 Surge 可以改写 QUIC 正文，也不等于所有 App 都能 MITM。
 
-SSE 响应由多个 `data:` 帧和结束事件组成。脚本应：
+## 五、Surge iOS 6 的开发影响
 
-1. 按空行分割完整 SSE 帧；
-2. 只解析合法 JSON data 帧；
-3. 修改明确的卡片列表；
-4. 保留事件顺序、`seq`、分页字段和 `COMPLETE`；
-5. 非 JSON、未知事件、异常和不完整帧原样透传。
+官方页面和发行说明显示，iOS 6 的相关变化包括：
 
-不能逐网络 chunk `JSON.parse`，不能整体替换成 `{}`，不能删除包含快捷条、导航接续或正常业务的共享容器。
+- 配置和模块编辑时实时检查错误与警告，保存解析失败配置前会提示；
+- Profile History 可以比较、复制补丁和回滚，版本最多保留一年且总量受限；
+- 请求详情可以显示协议、状态、耗时、匹配规则和响应信息，并可从请求详情添加规则；
+- `DOMAIN-SET` 和 `RULE-SET` 取消原一百万条上限；
+- Wi-Fi Access 的 SOCKS5 支持 UDP ASSOCIATE；同一 association 只按首个数据包目的匹配一次；
+- HTTP API 可提供 `/v1/mcp`，让 AI Agent 读取或修改配置、运行脚本和控制 Surge；
+- Tailscale Exit Node/Subnet Router 和 WireGuard Listen Port 属于传输功能，不代表可以改写 App HTTPS 内容。
 
-## 7. 元数据和版本条件
+规则集取消上限不代表超大列表一定高效或安全，仍需测试更新、内存、匹配速度和实际覆盖范围。MCP 默认关闭，但 API Key 拥有完整控制权限，绝不能写入模块、日志、HAR、公开仓库或聊天内容，也不能暴露给不可信网络。
 
-可使用：
+iOS 6 与 Surge Mac 6.11 共享部分引擎更新，但不能默认两端 UI、最低版本和全部能力完全相同。模块应记录实际测试平台和版本；官方发行页当时显示 TestFlight 已提供 iOS 6，而 App Store 仍显示 iOS 5，不能把 TestFlight 体验直接称为所有用户的稳定版本。
+
+## 六、Loon、Script Hub 与跨客户端转换
+
+Loon 新版插件常见写法包括：
 
 ```ini
-#!name=名称
-#!desc=版本和简短范围
-#!requirement=CORE_VERSION>=20
-#!system=iOS
+response if ${url} ~= /^https:\/\/api\.example\.com\/config/i then response.json.delete("data.ad")
+response if ${url} ~= /^https:\/\/api\.example\.com\/config/i then response.json.jq("del(.data.banner)")
+request if ${url} ~= /^https:\/\/ads\.example\.com/i then reject_dict(200)
 ```
 
-复杂能力要标注最低版本，不能把 Map Local 的最低版本套用到 jq 或脚本。需要用户配置时可使用 `#!arguments`，但参数名和占位符必须严格匹配。
+还可能使用 `response.body.mock`、`binary_body_mode`、typed `select/switch/input` 参数、外部 `jq_file` 和远程脚本。它们是 Loon 的语义，不是 Surge 的字符串别名。
 
-## 8. 公开源码借鉴边界
+转换前应逐项报告：
 
-广告平台拦截模块、分流列表、App 专用模块是三种不同东西：不能把普通业务分流列表全部设成 REJECT，也不能把大规模聚合广告模块直接套到单个 App。
+- URL 匹配范围是否改变；
+- request/response 方向是否改变；
+- reject、Mock、Map Local 的响应契约是否改变；
+- body 是否由文本变成二进制；
+- 是否启用了不同的 JS engine；
+- 参数、Cron、generic、network-changed 是否被目标客户端支持；
+- 外部脚本和 JQ 是否存在、固定且具有许可证；
+- 不支持的规则是否被明确标记，而不是静默丢弃。
 
-跨客户端的 `url reject-200`、`url reject-dict` 等写法不能直接当作 Surge 语法。借鉴 MIT 代码时保留许可和署名；远程脚本只引用已审阅、固定版本的源码。
+“能导入”不等于“语义相同”。特别是 `reject-dict`、`reject-array`、Loon 的 `response-body-json-del`、Loon 脚本默认值和 Surge 的 `Map Local`/jq/HTTP Script 必须重新验证。
 
+## 七、抓包、排错与验证
 
----
+### 1. 最小抓包流程
 
-# 抓包、排错与验证
+1. 明确 App/版本、页面位置、网络环境和已启用的重复模块；
+2. 备份当前配置和模块；
+3. 开启 Surge 的 HTTP 流量捕获，不要误用底层数据包捕获；
+4. HTTPS 正文需要 MITM 时，只加入目标主机并使用自己的 CA；
+5. 停用重复去广告模块，完全退出 App 后复现一次；
+6. 按时间、主机和路径定位请求，记录脱敏的字段路径、类型和安全计数；
+7. 关闭捕获，删除不必要的完整 HAR。
 
-## 1. iOS 抓包基本流程
+### 2. 证据等级
 
-1. 启动 Surge。
-2. 开启“捕获流量”，不是“数据包捕获”。后者是底层 TCP/UDP/ICMP 级别分析，通常不是写 App 去广告模块所需。
-3. 需要 HTTPS 正文时，生成并信任自己的 MITM CA。
-4. 只把目标主机加入 MITM，不要一开始使用 `*`。
-5. 停用重复去广告模块，完全退出 App 后重新打开并复现一次。
-6. 在最近请求中按主机、时间和路径筛选，查看完整 URL、状态码、响应正文和重写命中说明。
+- 模块详情显示：只证明文件加载；
+- 请求列表显示 URL：只证明请求发生；
+- 请求详情显示 Rewrite/Script 命中：证明规则执行；
+- 原始/修改后正文符合预期：证明响应发生变化；
+- 真机 UI 变化且搜索、登录、刷新、导航、支付等相关功能正常：才是用户层面的有效结果。
 
-抓包结束关闭捕获流量。分享记录前隐藏 Cookie、Authorization、Token、设备标识、坐标、家庭/工作地址、订单和出行信息。
+### 3. 故障定位
 
-## 2. 判断是否真的命中
+**没有目标请求：** 先考虑缓存、冷启动时机、替代端点、本地 UI、抓包筛选和版本变化，不要继续扩大旧正则。
 
-以下证据强度不同：
+**只有域名/443，没有正文：** 检查 HTTP 引擎、MITM hostname、CA 信任、证书固定和 QUIC；不要用关闭服务端证书验证冒充解决方案。
 
-- 模块详情里显示规则：只能证明配置被加载。
-- 请求列表出现目标 URL：只能证明请求发生。
-- 请求详情出现 Rewrite/Script 命中：才能证明规则实际执行。
-- 返回数据发生预期变化：证明响应被改写。
-- 真机页面变化且正常功能通过：才算用户层面的有效。
+**规则显示但不命中：** 检查协议、查询边界、模块启用、模块优先级、MITM、正文大小、Surge 版本和脚本方向。
 
-“广告没看到”不等于规则命中；可能是缓存、服务端实验、请求没有发生或其他模块生效。
+**页面空白、卡顿或重试：** 立即停用最新模块，恢复固定回滚版本，单模块对照；重点检查响应契约、布局引用、拒绝行为和流式结束帧。
 
-## 3. 常见故障定位
+### 4. 四层验证
 
-### 没有请求记录
+1. **静态：** 模块段、正反 URL、jq、脚本、版本要求、hostname、未知字段和隐私；
+2. **导入：** 目标 Surge 版本是否解析，编辑器警告是否清除；
+3. **命中：** 请求是否命中、是否解密、body 是否改变、大小/超时是否触发；
+4. **真机：** 广告是否消失，相关业务是否仍正常，是否出现缓存、空位、延迟或重试。
 
-可能是页面从本地缓存读取、接口只在冷启动请求、模块未启用、捕获过滤条件不对，或当前版本换了接口。不要马上扩大正则或删除整个域名。
+还应测试失败路径：非法 JSON、缺字段、错误类型、过大响应、异常脚本、压缩失败、未知 protobuf 字段和构建失败。构建失败时不能继续发布旧产物。
 
-### 只看到域名/443，没有 URL 和正文
+## 八、依赖、许可证和发布回滚
 
-检查 HTTP 捕获、MITM 主机名、CA 安装和系统信任；也要考虑证书固定或 QUIC。不要默认关闭服务端证书验证。
+### 远程依赖
 
-### 规则显示但没有命中
+正式模块应优先使用原生 URL Rewrite、Map Local 和 jq。必须使用脚本时：
 
-检查：
+- 固定到不可变 commit；
+- 保存源码、commit、SHA256、依赖版本和许可证；
+- 不把 `main`、`master`、`latest` 当成已经审计的正式版本；
+- 升级远程脚本必须重新静态审查和回归；
+- 远程脚本不记录完整请求和响应，异常原样透传。
 
-- URL 是否包含正确的协议、查询边界和主机；
-- App 请求是否走 HTTP 引擎；
-- MITM 是否覆盖目标主机；
-- 是否有其他模块先处理了同一响应；
-- 规则所需的 Surge 版本是否满足；
-- response body 是否超过 `max-size`；
-- SSE/二进制是否被当作普通 JSON。
+### 许可证
 
-### 页面出现空白/卡顿/重试
+公开代码的可见性不等于可自由复制。Apache、GPL、MIT 和无许可证项目的再分发义务不同。没有明确许可证时，学习行为和接口思路，独立实现代码；不要直接搬运脚本。保留来源、commit、许可证、修改文件和 NOTICE 要求。
 
-立即停用当前模块并重启 App 对照。不要继续叠加规则。常见原因是返回结构不符合契约、删除了布局引用、拒绝接口引起重试，或流式响应结束帧损坏。
+### 发布流程
 
-## 4. 推荐的验证分层
+1. 备份完整仓库、模块、README、远程脚本和依赖；
+2. 在副本上修改并记录基线 commit；
+3. 运行静态、结构、正反 URL、样本响应和隐私检查；
+4. 测试版使用稳定统一地址，版本号和说明区分；
+5. 先验证目标 Surge 导入，再做请求命中和真机回归；
+6. 真机确认后，才把完全相同的执行规则提升到正式地址；
+7. 保留不可变 commit Raw 回滚地址，不重写历史。
 
-### 静态验证
+### 发布前检查清单
 
-检查模块段、正则正反例、jq 语法、脚本语法、版本要求和 hostname。对 JSON 测试正常对象、数组、`null`、缺字段、错误类型和未知字段。
+- [ ] 没有 HAR、截图、Cookie、Token、账号、位置、节点或 CA 私钥；
+- [ ] 没有脚本完整打印 body、headers 或带查询参数的 URL；
+- [ ] MITM hostname 最小，未关闭服务端证书验证；
+- [ ] Body Rewrite/Script 的大小上限和 timeout 有明确理由；
+- [ ] 正则有协议、主机、路径和查询边界；
+- [ ] 未知字段、异常和超限路径会透传；
+- [ ] 远程脚本固定 commit 并有 SHA256/许可证记录；
+- [ ] 跨客户端转换有语义损失报告；
+- [ ] 静态、导入、命中、真机结果分开描述；
+- [ ] 正式版有固定回滚地址；
+- [ ] 正式说明保持简洁，不夸大未验证范围。
 
-### Surge 导入验证
+## 参考来源
 
-在目标 Surge 版本导入测试模块，查看警告；确认重写/脚本/MITM 开关和模块优先级。Python 或系统 jq 通过不能替代 Surge 内核导入。
-
-### 请求命中验证
-
-看最近请求是否包含目标路径，打开详情查看命中说明、原始/修改后正文和脚本日志。SSE 要查看完整帧处理；二进制要查看正文模式和错误。
-
-### 真机回归
-
-至少验证搜索、登录、内容刷新、地图、路线规划、导航、打车、订单、付款和安全提示中与修改范围相关的功能。测试版和正式版不要同时启用。
-
-## 5. 发布、版本和回滚
-
-推荐流程：
-
-1. 备份当前仓库全部文件和远程脚本依赖；
-2. 在副本上修改；
-3. 保存本地静态/结构/真实样本测试；
-4. 测试版使用统一安装地址，版本号递增；
-5. 真机确认后再转正式；
-6. 正式版保留不可变提交回滚地址，不重写历史。
-
-模块路径应保持稳定，例如：
-
-```text
-https://raw.githubusercontent.com/example/repo/main/App-Rebuild-Test.sgmodule
-```
-
-测试版继续更新同一路径，不为每一版新建安装地址；固定 commit URL 只用于回滚。
-
-## 6. 安全和隐私检查清单
-
-发布前确认：
-
-- 没有 HAR、截图、Cookie、Token、账号、位置、节点、CA 私钥；
-- 脚本没有完整打印响应或请求头；
-- 没有不必要的全域 MITM；
-- 没有关闭服务端证书验证；
-- 远程脚本来源和 commit 已固定；
-- README 没有承诺未经验证的全版本有效；
-- 正式说明按需要保持简洁，详细风险放单独文档或发布说明。
-
-
----
-
-# 参考来源
-
-本指南只整理通用知识和匿名示例。以下链接是实际阅读过的公开资料，具体参数仍应以目标 Surge 版本官方手册为准。
-
-## 官方手册
+### Surge 官方
 
 - [理解 Surge 原理](https://manual.nssurge.com/book/understanding-surge/cn/)
-- [快速入门](https://manual.nssurge.com/getting-started/quick-start.html)
 - [模块](https://manual.nssurge.com/profile/module.html)
+- [Requirement](https://manual.nssurge.com/profile/requirement.html)
 - [规则总览](https://manual.nssurge.com/rules/overview.html)
 - [HTTP 处理](https://manual.nssurge.com/http/overview.html)
 - [URL Rewrite](https://manual.nssurge.com/http/url-rewrite.html)
@@ -300,18 +354,19 @@ https://raw.githubusercontent.com/example/repo/main/App-Rebuild-Test.sgmodule
 - [脚本总览](https://manual.nssurge.com/scripting/overview.html)
 - [HTTP Response Script](https://manual.nssurge.com/scripting/http-response.html)
 - [MITM](https://manual.nssurge.com/http/mitm.html)
+- [加密 DNS](https://manual.nssurge.com/dns/encrypted-dns.html)
+- [Surge iOS 6](https://nssurge.com/surge-ios-6)
+- [Surge iOS 6 Release Notes](https://nssurge.com/surge-ios-6/release-notes)
 
-## GitHub 公开源码
+### 公开项目和源码实践
 
-- [Repcz/Tool：高德模块](https://raw.githubusercontent.com/Repcz/Tool/X/Surge/Module/Kelee/Amap_remove_ads.sgmodule)
-- [Repcz/Tool：12306 模块](https://raw.githubusercontent.com/Repcz/Tool/X/Surge/Module/Kelee/12306_remove_ads.sgmodule)
-- [Repcz/Tool：广告平台模块](https://raw.githubusercontent.com/Repcz/Tool/X/Surge/Module/Kelee/BlockAdvertisers.sgmodule)
-- [blackmatrix7：Advertising](https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rewrite/Surge/Advertising/Advertising.sgmodule)
-- [blackmatrix7：Advertising 说明](https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rewrite/Surge/Advertising/README.md)
-- [ddgksf2013：高德跨客户端规则](https://raw.githubusercontent.com/ddgksf2013/Rewrite/master/AdBlock/AmapAds.conf)
+- [DualSubs/Universal](https://github.com/DualSubs/Universal)
+- [BiliUniverse/Enhanced](https://github.com/Biliverse/Enhanced)
+- [NSRingo/WeatherKit](https://github.com/NSRingo/WeatherKit)
+- [Script-Hub](https://github.com/Script-Hub-Org/Script-Hub)
+- [xream/scripts](https://github.com/xream/scripts)
 - [app2smile/rules](https://github.com/app2smile/rules)
 - [Maasea/sgmodule](https://github.com/Maasea/sgmodule)
+- [Rabbit-Spec/Surge](https://github.com/Rabbit-Spec/Surge)
 
-## 许可提醒
-
-借鉴公开项目的代码时，应遵守其许可证和署名要求。规则语法、文档链接和模块结构不等于可以无条件复制第三方脚本。远程脚本应先审阅并固定版本。
+具体代码借鉴时，应查看对应 commit 的许可证和实际文件，不要仅凭仓库名称或 README 判断可复用范围。
