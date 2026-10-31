@@ -1,4 +1,4 @@
-# 高德统一测试版九：v0.1.6-test9
+# 高德统一测试版十：v0.1.7-test10
 
 ## 固定地址与基线
 
@@ -6,7 +6,7 @@
 
 https://raw.githubusercontent.com/niu93/surge-modules/main/Amap-Rebuild-Test.sgmodule
 
-基于统一测试版八，原有9条原生jq、天气/旧开屏Map Local、首页SSE脚本和工程修订全部保留；本次新增1条 frogserver 响应 jq，仅做当前 HAR 已确认的明确营销/弹窗顶层配置实验。正式版及历史测试文件不改。
+基于统一测试版九，原有10条原生jq、frogserver实验、天气/旧开屏Map Local、首页SSE脚本和工程修订全部保留；本次新增真实 `splash_screen_rt` 开屏广告精确拒绝及必要 MITM 主机。正式版及历史测试文件不改。
 
 ## 新抓包确认的残留来源
 
@@ -43,11 +43,11 @@ SSE不是单一JSON，无法直接用原生http-response-jq读取；因此本次
 
 使用 `requires-body=true`，缓冲上限512KiB；响应超限Surge会跳过脚本透传。流式响应需等正文完成才能处理，可能影响首屏到达时间或内存占用；当前实现尚未在Surge内核验证，持续流或缓存可能导致无效。
 
-MITM在原来的 `m5.amap.com,m5-zb.amap.com` 基础上只新增 `ai.amap.com`。解密按主机生效，所以该主机其他HTTPS请求也会进入解密范围，尽管脚本只匹配home_qs；不改CA、不关闭服务端证书验证。
+MITM在 test9 基础上新增 `amap-aos-info-nogw.amap.com`。解密按主机生效，所以该主机其他HTTPS请求也会进入解密范围，尽管 URL Rewrite 只匹配 `splash_screen_rt`；不改CA、不关闭服务端证书验证。
 
 ## 使用与验收
 
-更新已装的统一测试模块，确认版本为 **v0.1.6-test9**。只启用一个高德模块，停用重复高德规则后单独对照。需要 Surge iOS5.14+；继承 `#!requirement=CORE_VERSION>=20`，需同时开启 **重写、脚本、MITM**；首次加载脚本需能访问GitHub Raw。
+更新已装的统一测试模块，确认版本为 **v0.1.7-test10**。只启用一个高德模块，停用重复高德规则后单独对照。需要 Surge iOS5.14+；继承 `#!requirement=CORE_VERSION>=20`，需同时开启 **重写、脚本、MITM**；首次加载脚本需能访问GitHub Raw。
 
 完全退出高德再进入首页，检查：
 
@@ -65,6 +65,18 @@ MITM在原来的 `m5.amap.com,m5-zb.amap.com` 基础上只新增 `ai.amap.com`�
 - 19项分类栏jq检查通过；新HAR的242个可解析JSON无新增jq错误。13条ContentCenter响应中6条有已知header/空壳变化，其余保持。
 - 12组脚本URL边界检查通过。未验证Surge实际加载/脚本缓冲、实时解密/命中、UI收起、私有缓存及真实业务回归。
 
+## 本次真实开屏修复
+
+本次 HAR 重新确认真实开屏请求为：
+
+```text
+https://amap-aos-info-nogw.amap.com/ws/aos/alimama/splash_screen_rt
+```
+
+响应为 `multipart/form-data`，包含图片素材和广告元数据；元数据中确认 `media.is_ad=1`、`display_type=full`、`creative_type=static_image`、`display_time=5`。由于它不是可安全替换成 `{}` 的普通 JSON，本版采用精确 URL Rewrite `reject`，不拒绝整个域名、不修改图片 CDN，也不处理其他开屏路径。
+
+拒绝行为可能表现为跳过、留白、重试或回退，必须以 Surge 请求详情和真机页面确认。新增 MITM 主机后，该主机的其他 HTTPS 请求也可能被解密，但重写只匹配这一条路径。
+
 ## 本次 frogserver 实验
 
 本次 HAR 中确认 `m5.amap.com/ws/shield/frogserver/aocs/updatable/1` 出现4次，其中有一份较大的 JSON 配置。结构里出现了 `adCustomerRetainArchitecture`、`marketing_resource_config`、`taxi_activity` 和 `tel_retention_popup` 等明确偏营销/弹窗的顶层配置。
@@ -79,13 +91,13 @@ test9 只在根节点 `.data` 为对象时删除这4个已确认字段；字段�
 - 增加 `#!requirement=CORE_VERSION>=20`，让不满足 Body Rewrite 核心要求的客户端明确拒绝或提示，而不是静默无效；目标是 Surge iOS 6，仍需实际导入确认。
 - 开屏 Map Local 从“必须带查询参数”改为匹配精确路径及可选查询参数：`(?:\?|$)`。
 - 将内部脚本名从 `amap-home-sse-test7` 改为 `amap-home-sse`，不改变固定源码、匹配 URL、大小上限、超时或响应逻辑。
-- 没有加入 Loon 插件中尚未由当前设备新抓包确认的 `frogserver`、搜索详情、附近页、榜单等扩展规则；这些仍是后续候选，不代表本版已实现。
+- test9 的 frogserver 最小字段实验和 test10 的真实开屏路径修复分别独立，均未扩展到搜索详情、附近页或榜单接口。
 
 ## 备份回滚
 
-修改前已完整备份统一测试版八及当前仓库文件，正式版和历史文件不改。若 frogserver 实验导致导入、命中或业务异常，先停用测试版九，再使用固定测试版八回滚地址，不同时启用：
+修改前已完整备份统一测试版九及当前仓库文件，正式版和历史文件不改。若开屏拒绝导致导入、命中或业务异常，先停用测试版十，再使用固定测试版九回滚地址，不同时启用：
 
-https://raw.githubusercontent.com/niu93/surge-modules/7af13934a4dc049937fd3a2c5f57d81c514d5f16/Amap-Rebuild-Test.sgmodule
+https://raw.githubusercontent.com/niu93/surge-modules/f8425ea10fabe6c03c1974a3f0461d1a91f2a307/Amap-Rebuild-Test.sgmodule
 
 后续新测试仍只更新统一路径；固定提交链接仅用于回滚。正式版 `Amap.sgmodule` 本次不变。
 
