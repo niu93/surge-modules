@@ -1,4 +1,4 @@
-# 高德统一测试版七：v0.1.4-test7
+# 高德统一测试版八：v0.1.5-test8
 
 ## 固定地址与基线
 
@@ -6,7 +6,7 @@
 
 https://raw.githubusercontent.com/niu93/surge-modules/main/Amap-Rebuild-Test.sgmodule
 
-基于统一测试版六，原有8条原生jq、天气/旧开屏Map Local全部保留；本次增加1条分类栏jq与1条精确首页SSE响应脚本。正式版及历史测试文件不改。
+基于统一测试版七，原有9条原生jq、天气/旧开屏Map Local和首页SSE脚本全部保留；本次只做工程性修订：增加 Body Rewrite 核心版本要求、修正开屏 URL 查询边界、更新过时的基线注释和脚本名称。正式版及历史测试文件不改。
 
 ## 新抓包确认的残留来源
 
@@ -47,7 +47,7 @@ MITM在原来的 `m5.amap.com,m5-zb.amap.com` 基础上只新增 `ai.amap.com`�
 
 ## 使用与验收
 
-更新已装的统一测试模块，确认版本为 **v0.1.4-test7**。只启用一个高德模块，停用重复高德规则后单独对照。需要Surge iOS5.14+，本次需同时开启 **重写、脚本、MITM**；首次加载脚本需能访问GitHub Raw。
+更新已装的统一测试模块，确认版本为 **v0.1.5-test8**。只启用一个高德模块，停用重复高德规则后单独对照。需要 Surge iOS5.14+；本版增加 `#!requirement=CORE_VERSION>=20`，需同时开启 **重写、脚本、MITM**；首次加载脚本需能访问GitHub Raw。
 
 完全退出高德再进入首页，检查：
 
@@ -65,11 +65,18 @@ MITM在原来的 `m5.amap.com,m5-zb.amap.com` 基础上只新增 `ai.amap.com`�
 - 19项分类栏jq检查通过；新HAR的242个可解析JSON无新增jq错误。13条ContentCenter响应中6条有已知header/空壳变化，其余保持。
 - 12组脚本URL边界检查通过。未验证Surge实际加载/脚本缓冲、实时解密/命中、UI收起、私有缓存及真实业务回归。
 
+## 本版工程性修订
+
+- 增加 `#!requirement=CORE_VERSION>=20`，让不满足 Body Rewrite 核心要求的客户端明确拒绝或提示，而不是静默无效；目标是 Surge iOS 6，仍需实际导入确认。
+- 开屏 Map Local 从“必须带查询参数”改为匹配精确路径及可选查询参数：`(?:\?|$)`。
+- 将内部脚本名从 `amap-home-sse-test7` 改为 `amap-home-sse`，不改变固定源码、匹配 URL、大小上限、超时或响应逻辑。
+- 没有加入 Loon 插件中尚未由当前设备新抓包确认的 `frogserver`、搜索详情、附近页、榜单等扩展规则；这些仍是后续候选，不代表本版已实现。
+
 ## 备份回滚
 
-修改前已完整备份统一测试版六及仓库9个原有文件，不重写历史。异常时停用测试版七，再使用固定测试版六回滚地址，不同时启用：
+修改前已完整备份统一测试版七及当前仓库文件，正式版和历史文件不改。若工程性修订导致导入或命中异常，先停用测试版八，再使用固定测试版七回滚地址，不同时启用：
 
-https://raw.githubusercontent.com/niu93/surge-modules/83cae339fcf37fff4cb6d3dc290a12310b92d4a7/Amap-Rebuild-Test.sgmodule
+https://raw.githubusercontent.com/niu93/surge-modules/b32832437edf076113f21ac9b0d5270ebb43fc3e/Amap-Rebuild-Test.sgmodule
 
 后续新测试仍只更新统一路径；固定提交链接仅用于回滚。正式版 `Amap.sgmodule` 本次不变。
 
