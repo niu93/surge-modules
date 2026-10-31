@@ -1,4 +1,4 @@
-# 高德统一测试版八：v0.1.5-test8
+# 高德统一测试版九：v0.1.6-test9
 
 ## 固定地址与基线
 
@@ -6,7 +6,7 @@
 
 https://raw.githubusercontent.com/niu93/surge-modules/main/Amap-Rebuild-Test.sgmodule
 
-基于统一测试版七，原有9条原生jq、天气/旧开屏Map Local和首页SSE脚本全部保留；本次只做工程性修订：增加 Body Rewrite 核心版本要求、修正开屏 URL 查询边界、更新过时的基线注释和脚本名称。正式版及历史测试文件不改。
+基于统一测试版八，原有9条原生jq、天气/旧开屏Map Local、首页SSE脚本和工程修订全部保留；本次新增1条 frogserver 响应 jq，仅做当前 HAR 已确认的明确营销/弹窗顶层配置实验。正式版及历史测试文件不改。
 
 ## 新抓包确认的残留来源
 
@@ -47,7 +47,7 @@ MITM在原来的 `m5.amap.com,m5-zb.amap.com` 基础上只新增 `ai.amap.com`�
 
 ## 使用与验收
 
-更新已装的统一测试模块，确认版本为 **v0.1.5-test8**。只启用一个高德模块，停用重复高德规则后单独对照。需要 Surge iOS5.14+；本版增加 `#!requirement=CORE_VERSION>=20`，需同时开启 **重写、脚本、MITM**；首次加载脚本需能访问GitHub Raw。
+更新已装的统一测试模块，确认版本为 **v0.1.6-test9**。只启用一个高德模块，停用重复高德规则后单独对照。需要 Surge iOS5.14+；继承 `#!requirement=CORE_VERSION>=20`，需同时开启 **重写、脚本、MITM**；首次加载脚本需能访问GitHub Raw。
 
 完全退出高德再进入首页，检查：
 
@@ -65,7 +65,16 @@ MITM在原来的 `m5.amap.com,m5-zb.amap.com` 基础上只新增 `ai.amap.com`�
 - 19项分类栏jq检查通过；新HAR的242个可解析JSON无新增jq错误。13条ContentCenter响应中6条有已知header/空壳变化，其余保持。
 - 12组脚本URL边界检查通过。未验证Surge实际加载/脚本缓冲、实时解密/命中、UI收起、私有缓存及真实业务回归。
 
-## 本版工程性修订
+## 本次 frogserver 实验
+
+本次 HAR 中确认 `m5.amap.com/ws/shield/frogserver/aocs/updatable/1` 出现4次，其中有一份较大的 JSON 配置。结构里出现了 `adCustomerRetainArchitecture`、`marketing_resource_config`、`taxi_activity` 和 `tel_retention_popup` 等明确偏营销/弹窗的顶层配置。
+
+test9 只在根节点 `.data` 为对象时删除这4个已确认字段；字段不存在、`.data` 类型不符或 jq 异常时保留原响应。没有删除 `TrainOrderBanner`、`commonCouponSceneLog`、`giftEntryConfig` 或整个 `.data`，也没有处理 `scene/recommend` 和 POI 详情，避免把正常业务、日志或交通功能一起删除。
+
+这只是字段级实验：HAR 字段出现不证明它一定渲染了用户看到的广告，也不证明删除后 UI 一定改变。需要在 Surge 请求详情中确认该规则命中，再观察首页/打车相关页面是否变化及正常功能是否保持。
+
+
+## 继承的 test8 工程修订
 
 - 增加 `#!requirement=CORE_VERSION>=20`，让不满足 Body Rewrite 核心要求的客户端明确拒绝或提示，而不是静默无效；目标是 Surge iOS 6，仍需实际导入确认。
 - 开屏 Map Local 从“必须带查询参数”改为匹配精确路径及可选查询参数：`(?:\?|$)`。
@@ -74,9 +83,9 @@ MITM在原来的 `m5.amap.com,m5-zb.amap.com` 基础上只新增 `ai.amap.com`�
 
 ## 备份回滚
 
-修改前已完整备份统一测试版七及当前仓库文件，正式版和历史文件不改。若工程性修订导致导入或命中异常，先停用测试版八，再使用固定测试版七回滚地址，不同时启用：
+修改前已完整备份统一测试版八及当前仓库文件，正式版和历史文件不改。若 frogserver 实验导致导入、命中或业务异常，先停用测试版九，再使用固定测试版八回滚地址，不同时启用：
 
-https://raw.githubusercontent.com/niu93/surge-modules/b32832437edf076113f21ac9b0d5270ebb43fc3e/Amap-Rebuild-Test.sgmodule
+https://raw.githubusercontent.com/niu93/surge-modules/7af13934a4dc049937fd3a2c5f57d81c514d5f16/Amap-Rebuild-Test.sgmodule
 
 后续新测试仍只更新统一路径；固定提交链接仅用于回滚。正式版 `Amap.sgmodule` 本次不变。
 
