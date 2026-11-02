@@ -1,5 +1,5 @@
 #!name=拼多多·开屏与底栏重建测试
-#!desc=v0.2.6-test9：保留test8开屏/底栏，额外移除selected_bottom_skin以对照底栏皮肤影响；可能恢复默认图标，隐藏效果待验证。
+#!desc=v0.2.7-test10：撤销无效底栏皮肤实验，恢复开屏/双数组过滤两条规则；当前五项界面问题尚未修复。
 #!author=底栏参考 ZenmoFeiShi、可莉原插件；Surge本地适配
 #!source-url=https://kelee.one/Tool/Loon/Lpx/PinDuoDuo_remove_ads.lpx
 #!requirement=CORE_VERSION>=20
@@ -14,9 +14,6 @@
 [Body Rewrite]
 http-response-jq (?i)^https://api\.pinduoduo\.com/api/cappuccino/splash(?:\?|$) '. as $original | try (if (type == "object" and (.splash_list | type) == "array" and (.size | type) == "number" and (.valid_splash_id | type) == "number" and (.valid_splash_source_type | type) == "number") then .splash_list = [] | .size = 0 | .valid_splash_id = 0 | .valid_splash_source_type = 0 else . end) catch $original'
 http-response-jq (?i)^https://api\.pinduoduo\.com/api/alexa/homepage/hub(?:\?|$) '. as $original | try (if (type == "object" and (.result | type) == "object") then (if (.result.bottom_tabs | type) == "array" then .result.bottom_tabs |= map(select(.link | IN("index.html", "chat_list.html", "personal.html"))) else . end) | (if (.result.buffer_bottom_tabs | type) == "array" then .result.buffer_bottom_tabs |= map(select(.link | IN("index.html", "chat_list.html", "personal.html"))) else . end) else . end) catch $original'
-
-# 单字段皮肤对照：公开规则有此处理；尚未证明它控制Tab数量。
-http-response-jq (?i)^https://api\.pinduoduo\.com/api/alexa/homepage/hub(?:\?|$) '. as $original | try (if (type == "object" and (.result | type) == "object" and (.result.selected_bottom_skin | type) == "object") then del(.result.selected_bottom_skin) else . end) catch $original'
 
 [MITM]
 hostname = %APPEND% api.pinduoduo.com
