@@ -1,5 +1,5 @@
 #!name=拼多多·开屏与底栏重建测试
-#!desc=v0.2.7-test10：撤销无效底栏皮肤实验，恢复开屏/双数组过滤两条规则；当前五项界面问题尚未修复。
+#!desc=v0.2.8-test11：保留test10两条jq，仅让首页配置请求使用identity编码以排查传输路径；底栏隐藏尚未确认。
 #!author=底栏参考 ZenmoFeiShi、可莉原插件；Surge本地适配
 #!source-url=https://kelee.one/Tool/Loon/Lpx/PinDuoDuo_remove_ads.lpx
 #!requirement=CORE_VERSION>=20
@@ -10,6 +10,10 @@
 # 不包含原all_top_opts图片删除、不改顶部分类/首页商品/订单/个人页，不封域名、不加远程JS。
 # 底栏入口链接必须等于三个已见文件名；未知链接会按原作者白名单排除。
 # 对根节点和数组增加类型保护；解析异常或非预期类型保留原响应。
+
+# 单变量传输对照：只改这一个请求头；不手工写响应长度或改响应编码头。
+[Header Rewrite]
+http-request (?i)^https://api\.pinduoduo\.com/api/alexa/homepage/hub(?:\?|$) header-replace Accept-Encoding identity
 
 [Body Rewrite]
 http-response-jq (?i)^https://api\.pinduoduo\.com/api/cappuccino/splash(?:\?|$) '. as $original | try (if (type == "object" and (.splash_list | type) == "array" and (.size | type) == "number" and (.valid_splash_id | type) == "number" and (.valid_splash_source_type | type) == "number") then .splash_list = [] | .size = 0 | .valid_splash_id = 0 | .valid_splash_source_type = 0 else . end) catch $original'
