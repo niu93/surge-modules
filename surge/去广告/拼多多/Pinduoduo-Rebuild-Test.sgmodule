@@ -1,14 +1,19 @@
 #!name=拼多多·开屏与底栏重建测试
-#!desc=v0.2.1-test4：临时诊断阶段，仅保留开屏处理；底栏暂不改写，以抓取原始配置。不是底栏修复版。
+#!desc=v0.2.2-test5：保留开屏处理，接回可莉原插件双数组三入口白名单底栏过滤；非仅开屏诊断阶段。当前版本界面隐藏效果待验证。
+#!author=底栏参考 ZenmoFeiShi、可莉原插件；Surge本地适配
+#!source-url=https://kelee.one/Tool/Loon/Lpx/PinDuoDuo_remove_ads.lpx
 #!requirement=CORE_VERSION>=20
 
-# 测试版始终使用同一个安装路径；本阶段移除test3的底栏jq，保留相同开屏jq。
-# 只启用本测试模块，停用其他拼多多模块。底栏继续显示五项是诊断期预期现象。
-# 完全结束进程后重新启动，短时捕获原始主页配置；不要求卸载、清空数据或退出账号。
-# 原生jq需iOS5.14+/Mac5.9+；建议当前Surge iOS6。开屏空配置语义仍待真机完整验证。
+# 根据用户要求重新启用底栏实际过滤；不是已解决原生界面五项问题的保证。
+# 原生jq需iOS5.14+/Mac5.9+；CORE_VERSION>=20仅为通用Body Rewrite门槛。
+# 保留原开屏jq不变；底栏按原作者完整link白名单，同时处理bottom_tabs和buffer_bottom_tabs。
+# 不包含原all_top_opts图片删除、不改顶部分类/首页商品/订单/个人页，不封域名、不加远程JS。
+# 底栏入口链接必须等于三个已见文件名；未知链接会按原作者白名单排除。
+# 对根节点和数组增加类型保护；解析异常或非预期类型保留原响应。
 
 [Body Rewrite]
 http-response-jq (?i)^https://api\.pinduoduo\.com/api/cappuccino/splash(?:\?|$) '. as $original | try (if (type == "object" and (.splash_list | type) == "array" and (.size | type) == "number" and (.valid_splash_id | type) == "number" and (.valid_splash_source_type | type) == "number") then .splash_list = [] | .size = 0 | .valid_splash_id = 0 | .valid_splash_source_type = 0 else . end) catch $original'
+http-response-jq (?i)^https://api\.pinduoduo\.com/api/alexa/homepage/hub(?:\?|$) '. as $original | try (if (type == "object" and (.result | type) == "object") then (if (.result.bottom_tabs | type) == "array" then .result.bottom_tabs |= map(select(.link | IN("index.html", "chat_list.html", "personal.html"))) else . end) | (if (.result.buffer_bottom_tabs | type) == "array" then .result.buffer_bottom_tabs |= map(select(.link | IN("index.html", "chat_list.html", "personal.html"))) else . end) else . end) catch $original'
 
 [MITM]
 hostname = %APPEND% api.pinduoduo.com
