@@ -8,10 +8,15 @@
 
 ## 目录
 
-- [工作原理](concepts.md)
-- [模块写法](module-cookbook.md)
-- [抓包与排错](debug-and-validation.md)
-- [官方与公开源码来源](sources.md)
+- [模块与请求处理模型](#module-model)
+- [规则和响应改写](#rewrites)
+- [SSE与二进制](#binary-streams)
+- [MITM、DNS和QUIC](#mitm-dns-quic)
+- [Surge iOS 6](#surge-ios-6)
+- [跨客户端转换](#cross-client)
+- [抓包、排错和验证](#validation)
+- [依赖、发布和回滚](#release)
+- [参考来源](#sources)
 
 ## 最重要的原则
 
@@ -23,6 +28,8 @@
 6. 测试版和正式版分开；测试版可以使用稳定统一地址，正式版只发布已验证的规则。
 7. 无法确认时直接说明“未实现”或“证据不足”，不要把按钮失效说成按钮隐藏。
 8. 公开源码可以学习，但没有许可证时只能阅读，不能默认复制、改名或重新发布。
+
+<a id="module-model"></a>
 
 ## 一、Surge 模块和请求处理模型
 
@@ -76,6 +83,8 @@ Header Rewrite → URL Rewrite → Body Rewrite → HTTP Script
 | SSE | 帧感知的 response script | 不能把网络 chunk 当成 JSON |
 
 不要把其他客户端的 `reject-200`、`reject-dict`、`reject-array` 直接当作 Surge 语法。`{}`、`[]`、空正文、204、Map Local 和 REJECT 对客户端来说可能是完全不同的契约。
+
+<a id="rewrites"></a>
 
 ## 二、规则和响应改写
 
@@ -165,6 +174,8 @@ filter = type=http-response,pattern=^https://api\.example\.com/home(?:\?|$),requ
 
 脚本应先在内存中完成解析、修改、重新编码和校验，全部成功后再一次性返回。对于二进制、压缩或带长度字段的响应，不能返回半截数据。
 
+<a id="binary-streams"></a>
+
 ## 三、SSE、protobuf 和二进制
 
 ### 1. SSE
@@ -193,6 +204,8 @@ SSE 的网络读取块不等于完整事件。脚本应：
 
 应分别测试 identity/gzip、空 body、错误 frame、未知字段、非零 buffer offset、多消息和流式响应。没有 schema 或长度/校验算法证据时，不发布二进制重写。
 
+<a id="mitm-dns-quic"></a>
+
 ## 四、MITM、DNS 和 QUIC
 
 ### MITM
@@ -219,6 +232,8 @@ MITM 是主机级别，不是路径级别。即使只修改一个 URL，该主�
 
 Surge iOS 6 提供 Adaptive QUIC Blocking：当 App 能回退 TCP 时才阻止 QUIC，并按主机记忆结果；QUIC-only App 可以继续使用 QUIC。它有助于需要 HTTP/TCP 观察的场景，但不等于 Surge 可以改写 QUIC 正文，也不等于所有 App 都能 MITM。
 
+<a id="surge-ios-6"></a>
+
 ## 五、Surge iOS 6 的开发影响
 
 官方页面和发行说明显示，iOS 6 的相关变化包括：
@@ -234,6 +249,8 @@ Surge iOS 6 提供 Adaptive QUIC Blocking：当 App 能回退 TCP 时才阻止 Q
 规则集取消上限不代表超大列表一定高效或安全，仍需测试更新、内存、匹配速度和实际覆盖范围。MCP 默认关闭，但 API Key 拥有完整控制权限，绝不能写入模块、日志、HAR、公开仓库或聊天内容，也不能暴露给不可信网络。
 
 iOS 6 与 Surge Mac 6.11 共享部分引擎更新，但不能默认两端 UI、最低版本和全部能力完全相同。模块应记录实际测试平台和版本；官方发行页当时显示 TestFlight 已提供 iOS 6，而 App Store 仍显示 iOS 5，不能把 TestFlight 体验直接称为所有用户的稳定版本。
+
+<a id="cross-client"></a>
 
 ## 六、Loon、Script Hub 与跨客户端转换
 
@@ -259,6 +276,8 @@ request if ${url} ~= /^https:\/\/ads\.example\.com/i then reject_dict(200)
 - 不支持的规则是否被明确标记，而不是静默丢弃。
 
 “能导入”不等于“语义相同”。特别是 `reject-dict`、`reject-array`、Loon 的 `response-body-json-del`、Loon 脚本默认值和 Surge 的 `Map Local`/jq/HTTP Script 必须重新验证。
+
+<a id="validation"></a>
 
 ## 七、抓包、排错与验证
 
@@ -299,6 +318,8 @@ request if ${url} ~= /^https:\/\/ads\.example\.com/i then reject_dict(200)
 
 还应测试失败路径：非法 JSON、缺字段、错误类型、过大响应、异常脚本、压缩失败、未知 protobuf 字段和构建失败。构建失败时不能继续发布旧产物。
 
+<a id="release"></a>
+
 ## 八、依赖、许可证和发布回滚
 
 ### 远程依赖
@@ -338,6 +359,8 @@ request if ${url} ~= /^https:\/\/ads\.example\.com/i then reject_dict(200)
 - [ ] 静态、导入、命中、真机结果分开描述；
 - [ ] 正式版有固定回滚地址；
 - [ ] 正式说明保持简洁，不夸大未验证范围。
+
+<a id="sources"></a>
 
 ## 参考来源
 
