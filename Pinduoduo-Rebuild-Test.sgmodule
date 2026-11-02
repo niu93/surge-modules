@@ -1,19 +1,14 @@
 #!name=拼多多·开屏与底栏重建测试
-#!desc=v0.2.0-test3：仅测试移除开屏和底栏多多视频/双11，保留首页/聊天/个人中心；以当前已见JSON结构处理，界面效果尚待验证。
-#!author=参考原插件 ZenmoFeiShi、可莉及用户提供的Script Hub输出；三目标独立重建
+#!desc=v0.2.1-test4：临时诊断阶段，仅保留开屏处理；底栏暂不改写，以抓取原始配置。不是底栏修复版。
 #!requirement=CORE_VERSION>=20
 
-# 建议 Surge iOS 6 测试；原生 jq 最低 iOS 5.14+ / Mac 5.9+。
-# 仅处理下述两个接口。无远程JS、无订单/个人页精简、无统计/长连接/CDN域名封锁。
-# 开屏：保持响应外壳和未知字段，清空已见 splash_list，size/有效开屏标记置0。
-# 置0表示无有效开屏是本测试的空配置假设，尚未真机证明缓存/回退行为。
-# 底栏：完整数组同时包含首页/聊天/个人中心时保留这三类link，支持link附带查询参数。
-# 缺字段、错误类型、缺少三入口或异常结构透传；未宣称已找到原生界面仍有五项的根因。
+# 测试版始终使用同一个安装路径；本阶段移除test3的底栏jq，保留相同开屏jq。
+# 只启用本测试模块，停用其他拼多多模块。底栏继续显示五项是诊断期预期现象。
+# 完全结束进程后重新启动，短时捕获原始主页配置；不要求卸载、清空数据或退出账号。
+# 原生jq需iOS5.14+/Mac5.9+；建议当前Surge iOS6。开屏空配置语义仍待真机完整验证。
 
 [Body Rewrite]
 http-response-jq (?i)^https://api\.pinduoduo\.com/api/cappuccino/splash(?:\?|$) '. as $original | try (if (type == "object" and (.splash_list | type) == "array" and (.size | type) == "number" and (.valid_splash_id | type) == "number" and (.valid_splash_source_type | type) == "number") then .splash_list = [] | .size = 0 | .valid_splash_id = 0 | .valid_splash_source_type = 0 else . end) catch $original'
-http-response-jq (?i)^https://api\.pinduoduo\.com/api/alexa/homepage/hub(?:\?|$) '. as $original | try (def object: type == "object"; def tabfile: if object and ((.link | type) == "string") then (.link | split("#")[0] | split("?")[0] | split("/")[-1]) else "" end; def keepfile: . == "index.html" or . == "chat_list.html" or . == "personal.html"; def clean_tabs: if type == "array" then (map(tabfile)) as $files | if (($files | index("index.html")) != null and ($files | index("chat_list.html")) != null and ($files | index("personal.html")) != null) then map(select(if object and ((.link | type) == "string") then (tabfile | keepfile) else true end)) else . end else . end; if object and ((.result | type) == "object") then (if (.result.bottom_tabs | type) == "array" then .result.bottom_tabs |= clean_tabs else . end) | (if (.result.buffer_bottom_tabs | type) == "array" then .result.buffer_bottom_tabs |= clean_tabs else . end) else . end) catch $original'
 
 [MITM]
-# 只追加必要主机；不改 CA，不关闭服务器证书校验。
 hostname = %APPEND% api.pinduoduo.com
