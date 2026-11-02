@@ -8,9 +8,9 @@
 |---|---|---|
 | [高德正式版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap.sgmodule) | v0.1.3 | [简洁说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/README.md) |
 | [高德统一测试版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap-Rebuild-Test.sgmodule) | v0.1.7-test10 | [测试说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap-Rebuild-Test.md) |
-| [拼多多统一测试版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/Pinduoduo-Rebuild-Test.sgmodule) | v0.2.2-test5，开屏＋原插件底栏过滤 | [阶段说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/README.md) |
+| [拼多多统一测试版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/Pinduoduo-Rebuild-Test.sgmodule) | v0.2.3-test6，保留开屏/底栏＋个人/聊天推荐实验 | [阶段说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/README.md) |
 
-同一个App不要同时启用正式版、测试版或其他重复模块。拼多多已启用原插件双数组底栏过滤，但当前App原生界面的隐藏效果尚未确认，不应视为已修复。
+同一个App不要同时启用正式版、测试版或其他重复模块。拼多多底栏test5已获用户可见隐藏确认；test6保留原规则，新增个人页/聊天推荐区三个接口的受限实验，新功能尚未确认效果与业务兼容性。
 高德[历史测试文件](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/%E5%8E%86%E5%8F%B2/)及[脚本源码](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/%E8%84%9A%E6%9C%AC/)保留，不把归档版称作最新版本。
 
 ### 固定安装地址
