@@ -1,5 +1,5 @@
 #!name=拼多多·开屏与底栏重建测试
-#!desc=v0.2.3-test6：保留开屏/底栏，按原插件新增个人页和聊天页三个接口的空JSON映射实验；本次HAR缺少这些响应，效果与正常业务待验证。
+#!desc=v0.2.4-test7：保留test6，临时阻断xg长连接以验证能否回退HTTP；可能影响聊天/推送，推荐区效果未确认。
 #!author=底栏参考 ZenmoFeiShi、可莉原插件；Surge本地适配
 #!source-url=https://kelee.one/Tool/Loon/Lpx/PinDuoDuo_remove_ads.lpx
 #!requirement=CORE_VERSION>=20
@@ -10,6 +10,10 @@
 # 不包含原all_top_opts图片删除、不改顶部分类/首页商品/订单/个人页，不封域名、不加远程JS。
 # 底栏入口链接必须等于三个已见文件名；未知链接会按原作者白名单排除。
 # 对根节点和数组增加类型保护；解析异常或非预期类型保留原响应。
+
+[Rule]
+# 单主机实验，不直接重写二进制。出现聊天/推送/页面异常应立即回退test6。
+DOMAIN,xg.pinduoduo.com,REJECT,extended-matching
 
 [Map Local]
 # 实验：仅转换原插件已声明的三个路径；没有本次目标响应合同，不保证只影响推荐。
