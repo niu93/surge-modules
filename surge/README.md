@@ -8,9 +8,9 @@
 |---|---|---|
 | [高德正式版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap.sgmodule) | v0.1.3 | [简洁说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/README.md) |
 | [高德统一测试版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap-Rebuild-Test.sgmodule) | v0.1.7-test10 | [测试说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap-Rebuild-Test.md) |
-| [拼多多统一测试版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/Pinduoduo-Rebuild-Test.sgmodule) | v0.2.7-test10，撤销无效皮肤实验（底栏问题未修复） | [阶段说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/README.md) |
+| [拼多多统一测试版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/Pinduoduo-Rebuild-Test.sgmodule) | v0.2.8-test11，仅首页请求编码对照（底栏待验证） | [阶段说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/README.md) |
 
-同一个App不要同时启用正式版、测试版或其他重复模块。拼多多底栏test5已获用户可见隐藏确认；test10已撤销无效皮肤实验；当前虽能把响应筛为三项，用户仍见五项，尚未修复原生底栏。个人页/聊天推荐也暂不处理。
+同一个App不要同时启用正式版、测试版或其他重复模块。拼多多底栏test5已获用户可见隐藏确认；test11不再叠加字段删除，仅请求首页配置采用identity编码，对照传输路径是否相关；原两条jq不变，原生底栏与推荐区仍未确认修复。
 高德[历史测试文件](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/%E5%8E%86%E5%8F%B2/)及[脚本源码](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/%E8%84%9A%E6%9C%AC/)保留，不把归档版称作最新版本。
 
 ### 固定安装地址
