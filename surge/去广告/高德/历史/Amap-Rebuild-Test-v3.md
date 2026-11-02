@@ -29,7 +29,7 @@ https://m5.amap.com/ws/info_bff/ContentCenter
 ## 安装
 
 ```text
-https://raw.githubusercontent.com/niu93/surge-modules/main/Amap-Rebuild-Test-v3.sgmodule
+https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/%E5%8E%86%E5%8F%B2/Amap-Rebuild-Test-v3.sgmodule
 ```
 
 在 Surge 模块管理中安装或更新，确认描述为 `v0.1.3-test6`。先停用正式版、test5 和其他重复高德模块，只启用 test6。完全退出高德后重新打开首页。
@@ -52,5 +52,5 @@ https://raw.githubusercontent.com/niu93/surge-modules/b21a9d38d2014824f2c3b85052
 正式版仍保持：
 
 ```text
-https://raw.githubusercontent.com/niu93/surge-modules/main/Amap.sgmodule
+https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap.sgmodule
 ```
