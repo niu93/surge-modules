@@ -10,20 +10,20 @@
 
 ```ini
 [Rule]
-RULE-SET,https://raw.githubusercontent.com/niu93/surge-modules/main/Rex-TW.list,TW
-RULE-SET,https://raw.githubusercontent.com/niu93/surge-modules/main/Rex-JP.list,JP
-RULE-SET,https://raw.githubusercontent.com/niu93/surge-modules/main/Rex-Proxy.list,代理
+RULE-SET,https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%88%86%E6%B5%81/Rex/Rex-TW.list,台湾节点
+RULE-SET,https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%88%86%E6%B5%81/Rex/Rex-JP.list,日本节点
+RULE-SET,https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%88%86%E6%B5%81/Rex/Rex-Proxy.list,Proxy
 ```
 
-`TW`、`JP`、`代理` 必须是你主配置中实际存在的策略或策略组名称；名称不同就只修改上述三行最后一项。这里按来源文件保留默认名称，没有读取、创建或修改个人节点/配置。若主配置托管且不可编辑，请在可编辑副本中处理，注意副本是否继续获得原托管更新。
+示例采用 Rabbit 模板常见策略名 `台湾节点`、`日本节点`、`Proxy`，必须与你的主配置实际名称一致；名称不同只修改三行最后一项。没有提供、创建或修改个人节点/配置。若主配置托管且不可编辑，请在可编辑副本中处理，注意副本是否继续获得原托管更新。
 
 规则表通常从上往下首次匹配决定策略，所以把这三行放在宽泛直连、GEOIP 和 FINAL 前。官方 `pre-matching` 拒绝规则有更高优先级，本规则集不承诺覆盖它们。需要使用“规则模式”；全局/直连模式可能不按普通规则列表分流。
 
 ## 固定远程地址
 
-- [Rex-Proxy.list](https://raw.githubusercontent.com/niu93/surge-modules/main/Rex-Proxy.list)
-- [Rex-JP.list](https://raw.githubusercontent.com/niu93/surge-modules/main/Rex-JP.list)
-- [Rex-TW.list](https://raw.githubusercontent.com/niu93/surge-modules/main/Rex-TW.list)
+- [Rex-Proxy.list](https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%88%86%E6%B5%81/Rex/Rex-Proxy.list)
+- [Rex-JP.list](https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%88%86%E6%B5%81/Rex/Rex-JP.list)
+- [Rex-TW.list](https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%88%86%E6%B5%81/Rex/Rex-TW.list)
 
 后续保持这三个路径更新，不用更换主配置中的链接。外部规则集会被下载并缓存，可在 Surge 对应资源/规则集详情中更新；当前手册默认更新间隔为 86400 秒，具体以版本和配置为准。Raw 可访问不表示节点或目标站点一定可用。
 
