@@ -4,7 +4,7 @@
 
 所有测试版继续使用同一个安装地址，不新增测试订阅文件名：
 
-https://raw.githubusercontent.com/niu93/surge-modules/main/Amap-Rebuild-Test.sgmodule
+https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap-Rebuild-Test.sgmodule
 
 基于统一测试版九，原有10条原生jq、frogserver实验、天气/旧开屏Map Local、首页SSE脚本和工程修订全部保留；本次新增真实 `splash_screen_rt` 开屏广告精确拒绝及必要 MITM 主机。正式版及历史测试文件不改。
 
