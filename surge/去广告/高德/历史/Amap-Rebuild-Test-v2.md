@@ -5,7 +5,7 @@
 测试地址：
 
 ```text
-https://raw.githubusercontent.com/niu93/surge-modules/main/Amap-Rebuild-Test-v2.sgmodule
+https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/%E5%8E%86%E5%8F%B2/Amap-Rebuild-Test-v2.sgmodule
 ```
 
 ## 与 test4 的区别
@@ -35,7 +35,7 @@ https://raw.githubusercontent.com/niu93/surge-modules/main/Amap-Rebuild-Test-v2.
 正式版保持不变：
 
 ```text
-https://raw.githubusercontent.com/niu93/surge-modules/main/Amap.sgmodule
+https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap.sgmodule
 ```
 
 test3 固定回滚：
