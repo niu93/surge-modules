@@ -7,7 +7,7 @@
 ## 唯一安装地址
 
 ```text
-https://raw.githubusercontent.com/niu93/surge-modules/main/Pinduoduo-Rebuild-Test.sgmodule
+https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/Pinduoduo-Rebuild-Test.sgmodule
 ```
 
 所有后续测试及诊断阶段均更新这个文件，不新增安装地址。已经安装的用户直接更新同一模块，无需再安装第二个。
