@@ -1,5 +1,5 @@
 #!name=拼多多·开屏与底栏重建测试
-#!desc=v0.2.2-test5：保留开屏处理，接回可莉原插件双数组三入口白名单底栏过滤；非仅开屏诊断阶段。当前版本界面隐藏效果待验证。
+#!desc=v0.2.3-test6：保留开屏/底栏，按原插件新增个人页和聊天页三个接口的空JSON映射实验；本次HAR缺少这些响应，效果与正常业务待验证。
 #!author=底栏参考 ZenmoFeiShi、可莉原插件；Surge本地适配
 #!source-url=https://kelee.one/Tool/Loon/Lpx/PinDuoDuo_remove_ads.lpx
 #!requirement=CORE_VERSION>=20
@@ -10,6 +10,13 @@
 # 不包含原all_top_opts图片删除、不改顶部分类/首页商品/订单/个人页，不封域名、不加远程JS。
 # 底栏入口链接必须等于三个已见文件名；未知链接会按原作者白名单排除。
 # 对根节点和数组增加类型保护；解析异常或非预期类型保留原响应。
+
+[Map Local]
+# 实验：仅转换原插件已声明的三个路径；没有本次目标响应合同，不保证只影响推荐。
+# 若聊天/客服/通知或个人中心异常，应停用本测试版，不能把空页面当去广告成功。
+(?i)^https://api\.pinduoduo\.com/api/caterham/v3/query/personal\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
+(?i)^https://api\.pinduoduo\.com/api/caterham/v3/query/new_chat_group\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
+(?i)^https://api\.pinduoduo\.com/api/zaire_biz/chat/resource/get_list_data\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
 
 [Body Rewrite]
 http-response-jq (?i)^https://api\.pinduoduo\.com/api/cappuccino/splash(?:\?|$) '. as $original | try (if (type == "object" and (.splash_list | type) == "array" and (.size | type) == "number" and (.valid_splash_id | type) == "number" and (.valid_splash_source_type | type) == "number") then .splash_list = [] | .size = 0 | .valid_splash_id = 0 | .valid_splash_source_type = 0 else . end) catch $original'
