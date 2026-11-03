@@ -1,41 +1,37 @@
-/* Surge http-response script. Scope: /api/alexa/homepage/hub only.
- * Keeps Home, Chat and Personal; other bottom tabs are removed.
- * Derived from the provided PDD iOS 8.29.0 HAR; not device-verified.
+/* PDD bottom tabs v0.2.0: FOUR-TAB COMPATIBILITY EXPERIMENT.
+ * Not device-verified. Reuses complete existing tab objects only.
+ * Scope: result.bottom_tabs and result.buffer_bottom_tabs, homepage/hub.
  */
 (function () {
   try {
-    if (!$response || typeof $response.body !== "string") return $done({});
-    var obj = JSON.parse($response.body);
-    var result = obj && obj.result;
-    if (!result || typeof result !== "object") return $done({});
-    var changed = false;
-    var removed = 0;
-    var expected = { "26": "index.html", "29": "chat_list.html", "30": "personal.html" };
-    ["bottom_tabs", "buffer_bottom_tabs"].forEach(function (key) {
-      var tabs = result[key];
-      if (!Array.isArray(tabs)) return;
-      var seen = {};
-      var keep = tabs.filter(function (tab) {
-        if (!tab || typeof tab !== "object") return false;
-        var id = String(tab.id);
-        if (!Object.prototype.hasOwnProperty.call(expected, id)) return false;
-        if (typeof tab.link !== "string" || tab.link.split(/[?#]/)[0] !== expected[id]) return false;
-        seen[id] = (seen[id] || 0) + 1;
-        return true;
+    var data = JSON.parse($response.body);
+    var r = data && data.result;
+    if (!r || !Array.isArray(r.bottom_tabs) || !Array.isArray(r.buffer_bottom_tabs)) return $done({});
+    var specs = [[26, 0, "index.html"], [31, 5, "classification.html"], [29, 3, "chat_list.html"], [30, 4, "personal.html"]];
+    var arrays = [r.bottom_tabs, r.buffer_bottom_tabs];
+    var selected = [];
+    for (var i = 0; i < specs.length; i++) {
+      var spec = specs[i];
+      var matches = arrays.map(function (tabs) {
+        return tabs.filter(function (t) {
+          return t && String(t.id) === String(spec[0]) && Number(t.group) === spec[1] && typeof t.link === "string" && t.link.split(/[?#]/)[0] === spec[2];
+        });
       });
-      // Fail open if the schema changes or any essential tab is absent/duplicated.
-      if (seen["26"] !== 1 || seen["29"] !== 1 || seen["30"] !== 1 || String(keep[0].id) !== "26") return;
-      if (keep.length < tabs.length) {
-        removed += tabs.length - keep.length;
-        result[key] = keep;
-        changed = true;
-      }
-    });
-    if (!changed) return $done({});
-    console.log("[PDD Bottom Tabs] Removed " + removed + " tab entries across bottom arrays.");
-    $done({ body: JSON.stringify(obj) });
-  } catch (error) {
-    console.log("[PDD Bottom Tabs] Unchanged: parse/schema error.");
+      // Repetition across arrays is normal; duplicates within either array are not.
+      if (matches[0].length > 1 || matches[1].length > 1) return $done({});
+      var tab = matches[0][0] || matches[1][0];
+      if (!tab) return $done({});
+      selected.push(tab);
+    }
+    var encoded = JSON.stringify(selected);
+    if (JSON.stringify(r.bottom_tabs) === encoded && JSON.stringify(r.buffer_bottom_tabs) === encoded) return $done({});
+    // Commit only after every identity check passes; leave skins and all other fields intact.
+    r.bottom_tabs = selected;
+    r.buffer_bottom_tabs = JSON.parse(encoded);
+    console.log("[PDD v0.2.0] Four-tab experiment applied: Home, Categories, Chat, Personal.");
+    $done({ body: JSON.stringify(data) });
+  } catch (e) {
+    console.log("[PDD v0.2.0] Invalid response; unchanged.");
     $done({});
   }
 })();
