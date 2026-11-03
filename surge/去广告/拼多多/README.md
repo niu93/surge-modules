@@ -1,61 +1,65 @@
 # 拼多多统一测试版
 
-## v0.2.8-test11：仅首页请求编码的单变量对照
+## v0.2.9-test12：基于Loon成功抓包的受限组合对照
 
-目标仍为保留首页、聊天、个人中心，隐藏多多视频与双11。当前不能称为已修复：已有多个HAR证明两数组已三项且有Body Rewrite修改日志，用户同次界面仍五项。重复删除数组、删皮肤、阻断长连接均未稳定实现目标，不再叠加这些做法。
+用户提供Loon未启插件与启用可莉插件的两份抓包，并确认启用时底栏只剩首页/聊天/个人中心，个人页与聊天页圈选推荐均消失。这份成功基准表明原插件完整组合在用户设备上有效；不能把此前Surge失败简单归因于App不支持修改。
 
-本次仅让精确首页配置请求尝试使用不压缩响应，对照传输路径是否有关；原有两条jq保持逐字不变。
-
-## 唯一安装链接
+本版继续同一个安装地址：
 
 ```text
 https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/Pinduoduo-Rebuild-Test.sgmodule
 ```
 
-仍只更新同一个模块，不新增测试安装地址。
+## 本轮改动
 
-## 唯一新增规则
+1. 保留原开屏和双底栏数组jq逐字不变。
+2. 撤下test11首页Accept-Encoding: identity对照，恢复原有编码协商，避免同时混入无结论的实验。
+3. 按实际Loon拒绝记录接回单主机规则：
 
 ```ini
-[Header Rewrite]
-http-request (?i)^https://api\.pinduoduo\.com/api/alexa/homepage/hub(?:\?|$) header-replace Accept-Encoding identity
+DOMAIN,xg.pinduoduo.com,REJECT,extended-matching
 ```
 
-Surge官方文档规定header-replace仅替换已存在的头；已有12份该接口请求均带一份Accept-Encoding，因此这里不额外添加重复头。不作用于其他API、素材或App，不改变Cookie、账号、查询参数、请求正文、节点或分流。
+4. 对精确主机api.pinduoduo.com的以下三个路径（带查询分隔符）映射HTTP200、JSON `{}`，与成功包中的实际响应契约一致：
 
-服务器可能不接受该协商，是否实际返回identity必须看响应记录。取消压缩可让该单个配置响应占用更多流量，现有样本解码大小约100–127KB；不是全局禁压缩。不手工改Content-Length、Transfer-Encoding或响应Content-Encoding，避免制造头体不一致。
+```text
+/api/caterham/v3/query/personal
+/api/caterham/v3/query/new_chat_group
+/api/zaire_biz/chat/resource/get_list_data
+```
 
-## 为什么检查传输，而不是继续加字段
+不加入meta整域拒绝、其他IP/统计/QUIC规则，不删首页icon_set或顶部分类，不删除selected_bottom_skin，不重新编号Tab，不增加远程JS或MITM主机。仍只追加api.pinduoduo.com，使用自己的CA，不跳过上游证书校验。
 
-- 对12份已抓首页响应离线对照，同一账号/安装/UA/能力参数一致，未发现能解释成功/失败的版本参数差异（不保存身份值）。
-- 原始五项响应为gzip；改写后HAR显示identity和解码体积的Content-Length，但HAR bodySize仍像上游压缩大小。
-- 后者**很可能只是记录层沿用上游统计**，不是已证明的线上错误；也不能由此宣称Surge存在bug。单变量对照只用于检验这一条尚未排除的执行路径，不保证能去掉底栏。
-- 未发现Digest/Content-MD5等明确响应签名证据，不能随意删除pdd-config等未知头。
-- 保留入口图标在这些短抓包里没有对应独立下载记录，无法据此断言图标加载失败导致回退。
-- 相关实验开关虽存在，未取得当前客户端消费语义；不按名称猜值，不重新编号Tab或清空全局配置。
+## 这与test7的区别和限制
 
-## 保持不变
+**大部分有效规则与之前test7相同，并非发现了新的隐藏开关。** 之前的失败反馈需要保留，本轮也不保证成功。新价值是：Loon成功包的专有日志首次明确证明xg实际被REJECT，三个推荐普通HTTP路径也真实出现并被改写，而先前Surge包没有三路径，重发旧包不能验证test7是否实际阻断或回退。
 
-- 开屏jq：`/api/cappuccino/splash`的已见空配置处理。
-- 底栏jq：`/api/alexa/homepage/hub`中bottom_tabs、buffer_bottom_tabs三个公开路由白名单及类型保护。
-- MITM只追加api.pinduoduo.com，使用自己的可信CA，不关闭服务器证书校验。
-- 无selected_bottom_skin删除、xg/titan阻断、Map Local、订单/聊天/个人页精简或远程JS。个人/聊天圈选推荐目前仍未实现。
+本轮必须核对Surge中这条链是否发生，不能仅凭模块文件存在或本地测试通过就声称运行等价：
 
-本地曾准备并执行自编的响应脚本候选29项合成检查及12份JSON内存回放，未执行任何第三方或HAR内JS；该脚本**本轮没有发布或启用**，避免同时改变编码与处理引擎而失去对照意义。
+```text
+xg实际REJECT
+→ 相关普通HTTP接口是否出现（因果尚未证明）
+→ 三路径是否Map Local 200/{}
+→ homepage/hub是否改写为三项
+→ 原生界面是否改变、正常业务是否可用
+```
 
-## 更新与验收
+Loon完整插件还有其他规则和同接口清理，本最小组合不保证完全复现其行为。开关前后操作次序/数量也不是完全受控，因此不能断言仅xg一项就引起HTTP回退。成功Loon仍保留底栏皮肤、请求接受gzip，不应把删皮肤或关压缩说成必要条件。
 
-1. 更新同一模块，确认v0.2.8-test11；只启用这一份拼多多模块。
-2. 保持重写、MITM和自己CA信任，完全结束拼多多后重开，观察底栏、聊天、个人中心是否正常。
-3. 若愿意补充同次短抓包，优先记录主页请求的Accept-Encoding、响应Content-Encoding、重写日志和两数组安全摘要，不需要抓订单/聊天正文或提供账号参数。
-4. 如无效或出现加载异常，通过同一测试地址回退test10；不继续堆更多未知字段，不要求卸载、退出账号或清除App数据。
+## 风险与回退
 
-本版为对照测试，不承诺已隐藏当前原生底栏，也不将“规则有日志”当真机成功。
+xg可能承载正常聊天、推送或其他业务，不是已证明的广告专用主机；阻断可能产生消息延迟、页面空白或启动重试。extended-matching仅扩大可识别主机信息的匹配，不会解密WebSocket二进制或保证覆盖全部替代通道。
 
-## 验证、来源与隐私
+- 只启用一份拼多多模块，更新后确认v0.2.9-test12，开启重写与MITM。
+- 完全结束拼多多再重开，先检查聊天、物流/交易通知、客服、订单、个人中心和首页加载，再看底栏与圈选推荐。
+- 若会话/通知/加载异常，立即停用该模块；反馈后通过同一地址回退test10，不继续加其他主机/IP来碰运气。不要首次在付款、取件或重要沟通期间测试。
+- 若目标仍在，优先核对xg实际匹配和三个HTTP请求记录；没有这些证据就不能说回退已发生。
+- 不要求卸载、退出账号或清空数据。停用补丁不保证清除App已保存状态。
 
-新增正则6项边界检查通过，原两个jq逐字不变且编译检查通过；没有对拼多多发起重放。前序已做12份真实响应的本地比较，但这不能替代本轮真实传输/界面验证。
+## 验证级别
 
-官方依据：[Header Rewrite](https://manual.nssurge.com/http/header-rewrite.html)、[Body Rewrite](https://manual.nssurge.com/http/body-rewrite.html)。原底栏思路参考ZenmoFeiShi、可莉，底栏成功仍以实际界面为准。建议Surge iOS6；原生jq最低iOS5.14+/Mac5.9+，CORE_VERSION>=20只是通用Body Rewrite门槛。
+本地核对了三条Map Local的正反URL边界及成功Loon包的对应HTTP200空对象记录；以Loon未启插件五项原始JSON回放现有底栏jq，确认为三项。现有两条jq字节不变。尚未验证Surge实际执行链、HTTP回退、原生界面及业务无损；用户对Loon成功的确认不等于当前Surge版已验证。
 
-发布前完整备份test10和仓库；不修改高德/Rex，不上传HAR、截图、私人配置、凭证、账号、位置或专属DNS。
+备份了test11与整个仓库和固定脚本依赖。只发布模块与匿名说明，不上传HAR、截图、私有配置、账号、订单、位置、凭证或专属DNS；高德和Rex未改动。
+
+底栏及推荐行为参考：ZenmoFeiShi、可莉原Loon插件，以及用户提供的Script Hub转换文件。未复制或执行不可审查的远程扫码脚本。
