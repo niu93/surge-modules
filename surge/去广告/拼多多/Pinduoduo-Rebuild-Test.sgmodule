@@ -1,24 +1,17 @@
-#!name=拼多多·开屏与底栏重建测试
-#!desc=v0.2.9-test12：按Loon成功抓包对照xg阻断与三推荐接口；保留开屏/底栏jq，取消编码实验。需验证聊天推送和实际命中。
-#!author=参考 ZenmoFeiShi、可莉原插件；Surge适配测试
-#!source-url=https://kelee.one/Tool/Loon/Lpx/PinDuoDuo_remove_ads.lpx
+#!name=拼多多·HAR独立去广告测试
+#!desc=v0.3.0-test13：仅依据Surge抓包；处理开屏、底栏候选及显式广告元数据商品项。无长连接阻断/远程JS，界面与业务待验证。
+#!author=独立实现；依据用户提供的Surge响应结构
 #!requirement=CORE_VERSION>=20
 
-# 当前是成功抓包组合的受限对照，不是完整Loon插件等价移植。
-# 与test7大部分有效规则相同；区别在于此次已有Loon实命中证据，仍须证明Surge执行/回退。
-# xg可能承载正常聊天/推送；不出现HTTP回退或有业务异常应停用并回退。
-
-[Rule]
-DOMAIN,xg.pinduoduo.com,REJECT,extended-matching
-
-[Map Local]
-(?i)^https://api\.pinduoduo\.com/api/caterham/v3/query/personal\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
-(?i)^https://api\.pinduoduo\.com/api/caterham/v3/query/new_chat_group\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
-(?i)^https://api\.pinduoduo\.com/api/zaire_biz/chat/resource/get_list_data\? data-type=text data="{}" status-code=200 header="Content-Type:application/json"
+# 本模块未使用Loon抓包、可莉插件或Script Hub输出作为规则来源。
+# 原生jq需Surge iOS5.14+/Mac5.9+；CORE_VERSION>=20不是完整jq最低版本证明。
+# 底栏曾出现已三项响应但原生界面五项，本版不宣称解决配置采用问题。
+# 首页广告过滤是实验：保留分页游标，不保证原页面无空位或追加加载。
 
 [Body Rewrite]
-http-response-jq (?i)^https://api\.pinduoduo\.com/api/cappuccino/splash(?:\?|$) '. as $original | try (if (type == "object" and (.splash_list | type) == "array" and (.size | type) == "number" and (.valid_splash_id | type) == "number" and (.valid_splash_source_type | type) == "number") then .splash_list = [] | .size = 0 | .valid_splash_id = 0 | .valid_splash_source_type = 0 else . end) catch $original'
-http-response-jq (?i)^https://api\.pinduoduo\.com/api/alexa/homepage/hub(?:\?|$) '. as $original | try (if (type == "object" and (.result | type) == "object") then (if (.result.bottom_tabs | type) == "array" then .result.bottom_tabs |= map(select(.link | IN("index.html", "chat_list.html", "personal.html"))) else . end) | (if (.result.buffer_bottom_tabs | type) == "array" then .result.buffer_bottom_tabs |= map(select(.link | IN("index.html", "chat_list.html", "personal.html"))) else . end) else . end) catch $original'
+http-response-jq (?i)^https://api\.pinduoduo\.com/api/cappuccino/splash(?:\?|$) 'def obj: type == "object"; . as $original | try (if (obj and (.splash_list | type) == "array" and (.size | type) == "number" and (.valid_splash_id | type) == "number" and (.valid_splash_source_type | type) == "number") then .splash_list = [] | .size = 0 | .valid_splash_id = 0 | .valid_splash_source_type = 0 else . end) catch $original'
+http-response-jq (?i)^https://api\.pinduoduo\.com/api/alexa/homepage/hub(?:\?|$) 'def obj: type == "object"; def home: . == "index.html" or . == "chat_list.html" or . == "personal.html"; def clean: if type == "array" then (map(if obj and (.link | type) == "string" then .link else null end)) as $links | if (($links | index("index.html")) != null and ($links | index("chat_list.html")) != null and ($links | index("personal.html")) != null) then map(select(if obj and (.link | type) == "string" then (.link | home) else true end)) else . end else . end; . as $original | try (if obj and (.result | obj) then (if (.result.bottom_tabs | type) == "array" then .result.bottom_tabs |= clean else . end) | (if (.result.buffer_bottom_tabs | type) == "array" then .result.buffer_bottom_tabs |= clean else . end) else . end) catch $original'
+http-response-jq (?i)^https://api\.pinduoduo\.com/api/alexa/cells/hub/v3(?:\?|$) 'def obj: type == "object"; def nonempty: if type == "string" then length > 0 else false end; def captured_ad: if obj and (.data | obj) and (.data.ad | obj) then (.data.ad.pkinfo | nonempty) and (.data.ad.pubinfo | nonempty) else false end; . as $original | try (if obj and (.data | obj) and (.data.goods_list | type) == "array" then .data.goods_list |= map(select(captured_ad | not)) else . end) catch $original'
 
 [MITM]
 hostname = %APPEND% api.pinduoduo.com
