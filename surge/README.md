@@ -8,9 +8,9 @@
 |---|---|---|
 | [高德正式版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap.sgmodule) | v0.1.3 | [简洁说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/README.md) |
 | [高德统一测试版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap-Rebuild-Test.sgmodule) | v0.1.7-test10 | [测试说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/Amap-Rebuild-Test.md) |
-| [拼多多统一测试版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/Pinduoduo-Rebuild-Test.sgmodule) | v0.2.9-test12，Loon成功组合的受限对照 | [阶段说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/README.md) |
+| [拼多多统一测试版](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/Pinduoduo-Rebuild-Test.sgmodule) | v0.3.0-test13，仅依据Surge HAR独立实现 | [阶段说明](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/README.md) |
 
-同一个App不要同时启用正式版、测试版或其他重复模块。拼多多底栏test5已获用户可见隐藏确认；test12保留两条jq，取消编码实验，按Loon成功包实际证据对照xg拒绝及三个推荐接口；须核验Surge真实命中、HTTP回退、界面及聊天推送，尚未确认修复。
+同一个App不要同时启用正式版、测试版或其他重复模块。拼多多test13仅根据8份不同Surge抓包独立实现：开屏、底栏候选、首页显式广告结构商品项；无域名阻断/空响应映射/远程脚本。原生底栏显示问题和个人/聊天圈选推荐仍未解决，列表空位/翻页及其他业务待实机验证。
 高德[历史测试文件](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/%E5%8E%86%E5%8F%B2/)及[脚本源码](%E5%8E%BB%E5%B9%BF%E5%91%8A/%E9%AB%98%E5%BE%B7/%E8%84%9A%E6%9C%AC/)保留，不把归档版称作最新版本。
 
 ### 固定安装地址
