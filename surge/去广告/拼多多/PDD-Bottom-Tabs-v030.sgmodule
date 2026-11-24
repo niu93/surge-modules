@@ -1,0 +1,8 @@
+#!name=拼多多底栏精简（v0.3）
+#!desc=基于 2026-11-25 原始冷启动逆向，同时统一 bottom_tabs 与 buffer_bottom_tabs，只保留首页、聊天、个人中心。
+
+[Script]
+PDD-Bottom-Tabs-v030 = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/hub(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-bottom-tabs-v030.js
+
+[MITM]
+hostname = %APPEND% api.pinduoduo.com
