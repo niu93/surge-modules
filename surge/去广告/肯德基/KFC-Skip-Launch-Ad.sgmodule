@@ -1,0 +1,8 @@
+#!name=肯德基去开屏广告（单模块版）
+#!desc=清除肯德基动态开屏广告，不影响菜单、订单和其他接口。模块自动加载配套脚本。基于 2026-11-25 抓包验证。
+
+[Script]
+KFC-Skip-Launch-Ad = type=http-response,pattern=^https:\/\/dynamicad\.kfc\.com\.cn\/api\/app\/newad\/bootStrap(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E8%82%AF%E5%BE%B7%E5%9F%BA/KFC-Skip-Launch-Ad.js
+
+[MITM]
+hostname = %APPEND% dynamicad.kfc.com.cn
