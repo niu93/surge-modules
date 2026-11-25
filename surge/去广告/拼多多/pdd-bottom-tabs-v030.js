@@ -42,8 +42,9 @@
           }
         } else if (key === "tab_images" || key === "tabImages") {
           if (child && typeof child === "object") {
-            ["11", "14"].forEach(function (tabId) {
-              if (Object.prototype.hasOwnProperty.call(child, tabId)) {
+            var allowedSkinTabs = { "0": true, "3": true, "4": true };
+            Object.keys(child).forEach(function (tabId) {
+              if (!allowedSkinTabs[tabId]) {
                 delete child[tabId];
                 changed = true;
               }
