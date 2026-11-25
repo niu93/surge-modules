@@ -1,10 +1,9 @@
-#!name=拼多多精简（v0.4.4）
-#!desc=版本 0.4.4：修复远程脚本缓存，强制加载最新底栏、限时秒杀和聊天商品过滤脚本。固定链接持续更新。
+#!name=拼多多精简（v0.4.5）
+#!desc=版本 0.4.5：首页底栏与限时秒杀合并为单一响应脚本，避免重复改写；保留聊天商品推广过滤。固定链接持续更新。
 
 [Script]
-PDD-Bottom-Tabs = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/hub(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-bottom-tabs-v030.js?v=0.4.4
-PDD-Chat-Flash-Sale = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/hub(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-chat-promotions.js?v=0.4.4
-PDD-Chat-Goods = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/cells\/hub\/v3\?.*scene=homegoods_dy_tpl.*,requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-chat-goods.js?v=0.4.4
+PDD-Bottom-Tabs = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/hub(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-bottom-tabs-v030.js?v=0.4.5
+PDD-Chat-Goods = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/cells\/hub\/v3\?.*scene=homegoods_dy_tpl.*,requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-chat-goods.js?v=0.4.5
 
 [MITM]
 hostname = %APPEND% api.pinduoduo.com
