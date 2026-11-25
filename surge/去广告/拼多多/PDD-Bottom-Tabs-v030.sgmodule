@@ -2,7 +2,7 @@
 #!desc=版本 0.5.0：按 8.33.0 IPA 真实模型统一两套底栏、移除 11/14 皮肤并清理聊天推荐商品；聊天规则不再误伤首页商品流。
 
 [Script]
-PDD-Bottom-Tabs-v030 = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/(?:hub|config\/hub|hub\/refresh)(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-bottom-tabs-v030.js?v=0.5.0
+PDD-Bottom-Tabs-v030 = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/(?:hub|config\/hub|hub\/refresh)(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-bottom-tabs-v030.js?v=0.5.1
 PDD-Chat-Goods = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/tyrion\/arec_list(?:\?.*)?$,requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-chat-goods.js?v=0.5.0
 
 [MITM]

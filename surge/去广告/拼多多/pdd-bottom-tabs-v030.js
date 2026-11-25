@@ -40,6 +40,15 @@
               }
             });
           }
+        } else if (key === "tab_images" || key === "tabImages") {
+          if (child && typeof child === "object") {
+            ["11", "14"].forEach(function (tabId) {
+              if (Object.prototype.hasOwnProperty.call(child, tabId)) {
+                delete child[tabId];
+                changed = true;
+              }
+            });
+          }
         }
         visit(value[key]);
       });
