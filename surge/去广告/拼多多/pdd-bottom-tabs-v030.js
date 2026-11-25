@@ -56,6 +56,23 @@
     }
 
     visit(data);
+
+    // Prevent the IPA from reusing a stale buffered-tab selection from MMKV.
+    function disableBufferFlags(value) {
+      if (!value || typeof value !== "object") return;
+      if (Array.isArray(value)) {
+        value.forEach(disableBufferFlags);
+        return;
+      }
+      ["use_buffer_bottom_tabs", "useBufferBottomTabs", "use_buffer_tabs", "useBufferTabs"].forEach(function (key) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          if (value[key] !== false) changed = true;
+          value[key] = false;
+        }
+      });
+      Object.keys(value).forEach(function (key) { disableBufferFlags(value[key]); });
+    }
+    disableBufferFlags(data);
     if (!changed) return $done({});
     $done({ body: JSON.stringify(data) });
   } catch (e) {
