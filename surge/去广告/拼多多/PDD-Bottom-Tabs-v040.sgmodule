@@ -1,0 +1,10 @@
+#!name=拼多多精简（v0.4）
+#!desc=精简底栏、聊天页限时秒杀入口及折叠消息下方图文商品推广。基于 2026-11-25 抓包验证。
+
+[Script]
+PDD-Bottom-Tabs-v040 = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/hub(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-bottom-tabs-v030.js
+PDD-Chat-Flash-Sale-v040 = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/hub(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-chat-promotions.js
+PDD-Chat-Goods-v040 = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/cells\/hub\/v3\?.*scene=homegoods_dy_tpl.*,requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-chat-goods.js
+
+[MITM]
+hostname = %APPEND% api.pinduoduo.com
