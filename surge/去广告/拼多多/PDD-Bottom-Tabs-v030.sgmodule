@@ -1,5 +1,5 @@
-#!name=拼多多精简（v0.4.2）
-#!desc=版本 0.4.2：修复底栏过滤导致首页图片缺失和刷新后底栏回退。只删除明确目标入口，保留其他对象。固定链接持续更新。
+#!name=拼多多精简（v0.4.3）
+#!desc=版本 0.4.3：修复 8.32.0 两套底栏不一致导致刷新回退，并移除 icon_set 中的限时秒杀入口。固定链接持续更新。
 
 [Script]
 PDD-Bottom-Tabs = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/hub(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-bottom-tabs-v030.js
