@@ -1,1 +1,54 @@
-(function(){try{if(!$response||typeof $response.body!=="string")return $done({});var data=JSON.parse($response.body),changed=false,wanted={"26":1,"29":1,"30":1};function walk(n){if(!n||typeof n!=="object")return;if(Array.isArray(n)){n.forEach(walk);return;}Object.keys(n).forEach(function(k){var x=n[k];if(k==="bottom_tabs"||k==="buffer_bottom_tabs"||k==="bottomTabs"||k==="bufferBottomTabs"){if(Array.isArray(x)){var y=x.filter(function(a){return a&&wanted[String(a.id)];});if(y.length!==x.length){n[k]=y;changed=true;}}}else if(k==="icon_set"||k==="slide_icon_set"){if(Array.isArray(x)){var y2=x.filter(function(a){return !(a&&(String(a.id)==="473"||a.title==="限时秒杀"));});if(y2.length!==x.length){n[k]=y2;changed=true;}}}else if(k==="selected_bottom_skin"||k==="selectedBottomSkin"){if(x&&typeof x==="object")Object.keys(x).forEach(function(q){var skin=x[q],im=skin&&(skin.tab_images||skin.tabImages);if(im){["11","14"].forEach(function(id){if(Object.prototype.hasOwnProperty.call(im,id)){delete im[id];changed=true;}});}});}walk(x);});}walk(data);$done(changed?{body:JSON.stringify(data)}:{});}catch(e){$done({});}})();
+/* Pinduoduo 8.33 bottom-tab filter. */
+(function () {
+  try {
+    if (!$response || typeof $response.body !== "string") return $done({});
+    var data = JSON.parse($response.body), changed = false;
+    var allowed = { "26": true, "29": true, "30": true };
+
+    function visit(value) {
+      if (!value || typeof value !== "object") return;
+      if (Array.isArray(value)) {
+        value.forEach(visit);
+        return;
+      }
+      Object.keys(value).forEach(function (key) {
+        var child = value[key];
+        if (key === "bottom_tabs" || key === "buffer_bottom_tabs" || key === "bottomTabs" || key === "bufferBottomTabs") {
+          if (Array.isArray(child)) {
+            var filtered = child.filter(function (tab) { return tab && allowed[String(tab.id)]; });
+            if (filtered.length !== child.length) {
+              value[key] = filtered;
+              changed = true;
+            }
+          }
+        } else if (key === "icon_set" || key === "slide_icon_set") {
+          if (Array.isArray(child)) {
+            var icons = child.filter(function (item) {
+              return !(item && (String(item.id) === "473" || item.title === "限时秒杀"));
+            });
+            if (icons.length !== child.length) {
+              value[key] = icons;
+              changed = true;
+            }
+          }
+        } else if (key === "selected_bottom_skin" || key === "selectedBottomSkin") {
+          if (child && typeof child === "object") {
+            ["11", "14"].forEach(function (skinId) {
+              if (Object.prototype.hasOwnProperty.call(child, skinId)) {
+                delete child[skinId];
+                changed = true;
+              }
+            });
+          }
+        }
+        visit(value[key]);
+      });
+    }
+
+    visit(data);
+    if (!changed) return $done({});
+    $done({ body: JSON.stringify(data) });
+  } catch (e) {
+    $done({});
+  }
+})();
