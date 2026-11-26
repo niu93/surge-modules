@@ -1,5 +1,9 @@
-#!name=拼多多精简（v0.5.3）
-#!desc=版本 0.5.3：按 8.33.0 IPA 真实模型统一两套底栏、移除 11/14 皮肤，关闭缓冲底栏并清理聊天推荐商品；聊天规则不再误伤首页商品流。
+#!name=拼多多精简（v0.5.4）
+#!desc=首页刷新对照。两套底栏筛选后的常用入口完全一致时清空缓冲列表，保留底栏、限时秒杀入口及聊天推荐精简。
+
+[Body Rewrite]
+# 仅当首页常规底栏具备三个已知入口，且缓冲列表中的三个入口与之相同时，清空缓冲列表。
+http-response-jq ^https://api\.pinduoduo\.com/api/alexa/homepage/hub(?:\?|$) 'def selected_tabs: if type == "array" and all(.[]; type == "object" and ((.id | type) == "number" or (.id | type) == "string" or .id == null)) then map(select((.id | tostring) as $id | $id == "26" or $id == "29" or $id == "30")) else empty end; try (if type == "object" and .success == true and (.result | type) == "object" then (.result.bottom_tabs | selected_tabs) as $regular | (.result.buffer_bottom_tabs | selected_tabs) as $buffer | if $regular == $buffer and ($regular | map([(.id | tostring), .link])) == [["26","index.html"],["29","chat_list.html"],["30","personal.html"]] then .result.buffer_bottom_tabs = [] else empty end else empty end) catch empty'
 
 [Script]
 PDD-Bottom-Tabs-v030 = type=http-response,pattern=^https:\/\/api\.pinduoduo\.com\/api\/alexa\/homepage\/(?:hub|config\/hub|hub\/refresh)(?:\?|$),requires-body=true,max-size=1048576,timeout=10,script-path=https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9%BF%E5%91%8A/%E6%8B%BC%E5%A4%9A%E5%A4%9A/pdd-bottom-tabs-v030.js?v=0.5.3
