@@ -5,8 +5,8 @@
 
 [Rule]
 # 阻止拼多多自带 HTTPDNS，促使其走系统/Surge DNS
-AND,((URL-REGEX, "^http:\/\/(?:\d{1,3}\.){3}\d{1,3}\/(?:v\d+\/)?d\d?(?:\?|$)"), (USER-AGENT, "*com.xunmeng.pinduoduo*")),REJECT-NO-DROP
-AND,((URL-REGEX, "^http:\/\/\[[0-9a-fA-F:]+\]\/(?:v\d+\/)?d\d?(?:\?|$)"), (USER-AGENT, "*com.xunmeng.pinduoduo*")),REJECT-NO-DROP
+AND,((URL-REGEX, "^http:\/\/(?:\d{1,3}\.){3}\d{1,3}\/(?:v\d+\/)?d\d?(?:\?|$)"), (USER-AGENT, "*com.xunmeng.pinduoduo*")),REJECT-DROP
+AND,((URL-REGEX, "^http:\/\/\[[0-9a-fA-F:]+\]\/(?:v\d+\/)?d\d?(?:\?|$)"), (USER-AGENT, "*com.xunmeng.pinduoduo*")),REJECT-DROP
 
 # 拦截 QUIC，促使业务请求回落到 HTTPS 以进入 MITM 处理链
 AND,((DOMAIN-SUFFIX, pinduoduo.com), (PROTOCOL, QUIC)),REJECT-NO-DROP

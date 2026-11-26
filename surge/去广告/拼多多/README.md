@@ -10,7 +10,7 @@ https://raw.githubusercontent.com/niu93/surge-modules/main/surge/%E5%8E%BB%E5%B9
 
 ## 主要内容
 
-- **网络通道回落（`[Rule]`）**：拦截拼多多自带 HTTPDNS（`/d`、`/d5`、`/v3/d`）、QUIC、长连接域名（`meta`、`xg`、`titan*`、`longlink`、`api-ipv6`）及部分统计上报域名，使用 `REJECT-NO-DROP` 促使回落到标准 HTTPS 供 MITM 捕获。
+- **网络通道回落（`[Rule]`）**：拦截拼多多自带 HTTPDNS（`/d`、`/d5`、`/v3/d`）、QUIC、长连接域名（`meta`、`xg`、`titan*`、`longlink`、`api-ipv6`）及部分统计上报域名。两条 HTTPDNS 规则使用 `REJECT-DROP`，降低快速失败触发的重试；其余拒绝规则仍使用 `REJECT-NO-DROP`。
 - **首页精简（`[Body Rewrite]`）**：保留底栏三项（首页、聊天、个人中心）及首页「百亿补贴」「多多买菜」入口；移除首页金刚区、异形横幅、拼小圈入口与顶部非默认推广标签。
 - **聊天与个人中心精简（`[Map Local]` / `[Body Rewrite]`）**：清理开屏、悬浮活动页、聊天推荐流、兜底推荐流及个人中心推广图标与横幅。
 
